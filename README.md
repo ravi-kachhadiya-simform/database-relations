@@ -2,7 +2,7 @@
 
 A 30 minute micro session that teaches database relationships to frontend developers. No SQL or backend background needed. If you know React and JavaScript, you're good.
 
-**🔗 Live demo:** [https://ravi-kachhadiya-simform.github.io/db-relationships/](https://ravi-kachhadiya-simform.github.io/db-relationships/)
+**🔗 Live demo:** [https://ravi-kachhadiya-simform.github.io/database-relations/](https://ravi-kachhadiya-simform.github.io/database-relations/)
 
 No download needed. Just open the link in your browser. If you'd rather run it on your machine, that works too (see [Run it locally](#run-it-locally)).
 
@@ -10,9 +10,9 @@ No download needed. Just open the link in your browser. If you'd rather run it o
 
 | Page | What it is | Link |
 |---|---|---|
-| **Story** (start here) | The main walkthrough used in the session | [Open the story](https://ravi-kachhadiya-simform.github.io/db-relationships/db-relations-story.html) |
-| **Playground** | Try the relationships yourself and see the SQL change | [Open the playground](https://ravi-kachhadiya-simform.github.io/db-relationships/db-relations-playground.html) |
-| **Game** | Quick quiz to check what stuck | [Play the game](https://ravi-kachhadiya-simform.github.io/db-relationships/db-relations-game.html) |
+| **Story** (start here) | The main walkthrough used in the session | [Open the story](https://ravi-kachhadiya-simform.github.io/database-relations/db-relations-story.html) |
+| **Playground** | Try the relationships yourself and see the SQL change | [Open the playground](https://ravi-kachhadiya-simform.github.io/database-relations/db-relations-playground.html) |
+| **Game** | Quick quiz to check what stuck | [Play the game](https://ravi-kachhadiya-simform.github.io/database-relations/db-relations-game.html) |
 
 Suggested order: Story → Playground → Game.
 
@@ -36,8 +36,8 @@ By the end you should be able to:
 Optional. No install, no build step. Download the repo and open any `.html` file in your browser.
 
 ```bash
-git clone https://github.com/ravi-kachhadiya-simform/db-relationships.git
-cd db-relationships
+git clone https://github.com/ravi-kachhadiya-simform/database-relations.git
+cd database-relations
 open db-relations-story.html
 ```
 
