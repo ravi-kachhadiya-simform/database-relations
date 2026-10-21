@@ -1,0 +1,1506 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Database Relations Whiteboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&family=Kalam:wght@400;700&display=swap">
+<style>
+  :root {
+    --board: #fbfaf5;
+    --ink: #23252b;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; }
+  body {
+    background: radial-gradient(120% 95% at 28% 12%, #ffffff 0%, var(--board) 48%, #f0eee6 100%);
+    color: var(--ink);
+    font-family: Kalam, 'Comic Sans MS', cursive;
+    -webkit-font-smoothing: antialiased;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  body.idle, body.idle * { cursor: none; }
+  #board { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  .sr-only {
+    position: absolute; width: 1px; height: 1px; overflow: hidden;
+    clip: rect(0 0 0 0); white-space: nowrap;
+  }
+</style>
+</head>
+<body>
+
+<svg id="board" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+  <defs>
+    <!-- rough rubber-stamp edges -->
+    <filter id="stampInk" x="-4%" y="-10%" width="108%" height="120%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" seed="7" result="noise"/>
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="4" xChannelSelector="R" yChannelSelector="G" result="rough"/>
+      <feColorMatrix in="noise" type="matrix" result="holes"
+        values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  -4 0 0 0 3.4"/>
+      <feComposite in="rough" in2="holes" operator="in"/>
+    </filter>
+  </defs>
+  <g id="shake"><g id="layer"></g></g>
+</svg>
+
+<p id="sr" class="sr-only" aria-live="polite"></p>
+
+<script>
+(() => {
+'use strict';
+
+/* =====================================================================
+   Whiteboard: database relationships, people first.
+
+   Keys (nothing is shown on screen):
+     Space, Right, PageDown, Enter   next step
+     Left, PageUp, Backspace         previous step
+     R                               replay the current scene
+     1 to 9                          jump to that scene
+     0                               scene 10
+     Home / End                      title slide / last scene
+     F                               fullscreen
+
+   Every scene is { title, steps: [fn, fn, ...] }. A step fn receives
+   `st`, a plain object shared by all steps of that scene, so a later
+   step can grab things an earlier step drew (st.heads, st.cards...).
+
+   How the engine works: to show step k it wipes the board, runs steps
+   0..k-1 instantly (final state, no animation), then runs step k with
+   animation. So every step must draw the same thing whether animated
+   or not. Just use the helpers below and it works out.
+
+   To add a scene: add an object to SCENES. Scene numbers in the headings
+   come from the position in the list, so reordering just works.
+   ===================================================================== */
+
+const NS = 'http://www.w3.org/2000/svg';
+const XML_NS = 'http://www.w3.org/XML/1998/namespace';
+const C = {
+  ink: '#23252b', blue: '#1f5cc4', red: '#d4392b', green: '#1d8a4b',
+  grey: '#666a73', faint: '#a9adb6', board: '#fbfaf5', paper: '#fffdf6', sticky: '#fff3bf',
+};
+const HAND = "Kalam, 'Comic Sans MS', 'Segoe Print', cursive";
+const MARKER = "Caveat, Kalam, 'Comic Sans MS', cursive";
+const SPEED = 1; // above 1 slows every animation down, below 1 speeds it up
+const EASE = {
+  out: 'cubic-bezier(.33,.8,.4,1)',
+  inOut: 'cubic-bezier(.65,0,.35,1)',
+  fall: 'cubic-bezier(.55,0,1,.45)',
+  land: 'cubic-bezier(.2,.8,.25,1)',
+  bounce: 'cubic-bezier(.3,1.6,.5,1)',
+};
+
+const layer = document.getElementById('layer');
+const shakeG = document.getElementById('shake');
+
+const motionQuery = matchMedia('(prefers-reduced-motion: reduce)');
+let motionOff = motionQuery.matches;
+if (motionQuery.addEventListener) motionQuery.addEventListener('change', e => { motionOff = e.matches; });
+
+/* ---------------------------------------------------------------------
+   Timeline. Inside one step, things play one after another by default.
+   Options on any helper:
+     gap: ms     wait this long after the previous thing ends
+     with: true  start together with the previous thing (+ offset ms)
+     t: ms       start at an exact time (does not move the cursor)
+   --------------------------------------------------------------------- */
+const S = { animate: false };
+let T = { now: 0, last: 0, max: 0 };
+
+function slot(dur, o = {}) {
+  const d = dur * SPEED;
+  const start = o.t != null ? o.t
+    : o.with ? T.last + (o.offset || 0) * SPEED
+    : T.now + (o.gap || 0) * SPEED;
+  if (o.t == null) T.last = start;
+  T.now = Math.max(T.now, start + d);
+  T.max = Math.max(T.max, start + d);
+  return [Math.max(0, start), d];
+}
+
+// Group several things into one timeline item (sequential inside).
+function block(o = {}, fn) {
+  const P = T;
+  const t0 = Math.max(0, o.t != null ? o.t
+    : o.with ? P.last + (o.offset || 0) * SPEED
+    : P.now + (o.gap || 0) * SPEED);
+  T = { now: t0, last: t0, max: t0 };
+  const out = fn(t0);
+  const end = Math.max(T.max, T.now);
+  T = P;
+  if (o.t == null) P.last = t0;
+  P.now = Math.max(P.now, end);
+  P.max = Math.max(P.max, end);
+  return out;
+}
+
+// Run fn for each item, starting each one `gap` ms after the last.
+function stagger(list, gap, fn, o = {}) {
+  return block(o, t0 => list.map((it, i) => block({ t: t0 + i * gap * SPEED }, () => fn(it, i))));
+}
+
+// Build something with no animation and without using up time.
+function still(fn) {
+  const a = S.animate, saved = T;
+  S.animate = false; T = { now: 0, last: 0, max: 0 };
+  const out = fn();
+  S.animate = a; T = saved;
+  return out;
+}
+
+// Animate CSS properties. When not animating, jump straight to the end.
+function play(node, frames, dur, o = {}) {
+  const [start, d] = slot(dur, o);
+  const end = frames[frames.length - 1];
+  const props = Object.keys(end).filter(k => k !== 'offset' && k !== 'easing');
+  if (!S.animate) {
+    props.forEach(k => { node.style[k] = end[k]; });
+    return node;
+  }
+  node._p = node._p || new Set();
+  // The first animation of a property holds its start value while waiting;
+  // later ones on the same property must not, or they would override it.
+  const seen = props.some(p => node._p.has(p));
+  props.forEach(p => node._p.add(p));
+  node.animate(frames, {
+    duration: Math.max(1, d), delay: start,
+    fill: seen ? 'forwards' : 'both', easing: o.ease || EASE.out,
+  });
+  return node;
+}
+const fadeIn = (n, dur = 220, o = {}) => play(n, [{ opacity: 0 }, { opacity: 1 }], dur, o);
+const fadeOut = (n, dur = 220, o = {}) => play(n, [{ opacity: o.from ?? 1 }, { opacity: 0 }], dur, o);
+const fadeTo = (n, from, to, dur = 220, o = {}) => play(n, [{ opacity: from }, { opacity: to }], dur, o);
+const tr = (x, y) => `translate(${f(x)}px, ${f(y)}px)`;
+const trr = (x, y, deg) => `${tr(x, y)} rotate(${f(deg)}deg)`;
+function move(n, dx, dy, dur = 600, o = {}) {
+  return play(n, [{ transform: tr(0, 0) }, { transform: tr(dx, dy) }], dur, { ease: EASE.inOut, ...o });
+}
+// A quick "no" wobble, side to side.
+function wobble(n, dur = 420, o = {}) {
+  return play(n, [[0, 0], [-9, 2], [8, -2], [-5, 1], [3, 0], [0, 0]].map(([x, y]) => ({ transform: tr(x, y) })), dur, o);
+}
+
+/* ---------------------------------------------------------------------
+   Seeded randomness, so a scene wobbles the same way every rebuild.
+   --------------------------------------------------------------------- */
+function mulberry32(a) {
+  return () => {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+let rng = mulberry32(1);
+const rand = (a, b) => a + (b - a) * rng();
+const jit = n => (rng() * 2 - 1) * n;
+const f = n => Math.round(n * 10) / 10;
+const f2 = n => Math.round(n * 1000) / 1000;
+
+function mk(tag, attrs = {}, parent = layer, before = null) {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) if (attrs[k] != null) e.setAttribute(k, attrs[k]);
+  parent.insertBefore(e, before);
+  return e;
+}
+
+function measure(text, size, family, weight) {
+  const t = mk('text', { x: -9999, y: -9999, 'font-size': size, 'font-family': family, 'font-weight': weight });
+  t.textContent = text;
+  const w = t.getComputedTextLength();
+  t.remove();
+  return w;
+}
+
+/* ---------------------------------------------------------------------
+   Sketchy path generators (hand-drawn, a bit wobbly)
+   --------------------------------------------------------------------- */
+function crPath(pts) {
+  let d = `M${f(pts[0][0])},${f(pts[0][1])}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2;
+    d += ` C${f(p1[0] + (p2[0] - p0[0]) / 6)},${f(p1[1] + (p2[1] - p0[1]) / 6)}`
+       + ` ${f(p2[0] - (p3[0] - p1[0]) / 6)},${f(p2[1] - (p3[1] - p1[1]) / 6)}`
+       + ` ${f(p2[0])},${f(p2[1])}`;
+  }
+  return d;
+}
+
+function lineD(x1, y1, x2, y2, o = {}) {
+  const dx = x2 - x1, dy = y2 - y1, len = Math.hypot(dx, dy) || 1;
+  const nx = -dy / len, ny = dx / len;
+  const bow = (o.bow ?? 0.015) * len;
+  const e = Math.min(2.5, len * 0.02);
+  const b1 = jit(bow), b2 = b1 * 0.6 + jit(bow * 0.5);
+  return `M${f(x1 + jit(e))},${f(y1 + jit(e))}`
+    + ` C${f(x1 + dx * 0.3 + nx * b1)},${f(y1 + dy * 0.3 + ny * b1)}`
+    + ` ${f(x1 + dx * 0.7 + nx * b2)},${f(y1 + dy * 0.7 + ny * b2)}`
+    + ` ${f(x2 + jit(e))},${f(y2 + jit(e))}`;
+}
+
+function curveD(x0, y0, c1x, c1y, c2x, c2y, x1, y1) {
+  return `M${f(x0)},${f(y0)} C${f(c1x + jit(8))},${f(c1y + jit(8))} ${f(c2x + jit(8))},${f(c2y + jit(8))} ${f(x1)},${f(y1)}`;
+}
+
+function ellipseD(cx, cy, rx, ry, o = {}) {
+  const n = o.n || 16;
+  const a0 = rand(0, Math.PI * 2);
+  const sweep = Math.PI * 2 + rand(0.3, 0.6);
+  const pts = [];
+  for (let i = 0; i <= n; i++) {
+    const a = a0 + sweep * i / n;
+    const k = (1 + jit(0.03)) * (1 + (i / n) * 0.05);
+    pts.push([cx + Math.cos(a) * rx * k, cy + Math.sin(a) * ry * k]);
+  }
+  return crPath(pts);
+}
+
+function rectDs(x, y, w, h, o = {}) {
+  const ov = o.over ?? 5, b = { bow: 0.008 };
+  return [
+    lineD(x - ov * rng(), y, x + w + ov * rng(), y, b),
+    lineD(x + w, y - ov * rng(), x + w, y + h + ov * rng(), b),
+    lineD(x + w + ov * rng(), y + h, x - ov * rng(), y + h, b),
+    lineD(x, y + h + ov * rng(), x, y - ov * rng(), b),
+  ];
+}
+
+function headD(x, y, a, s = 22) {
+  const a1 = a + Math.PI - 0.45, a2 = a + Math.PI + 0.45;
+  return `M${f(x + Math.cos(a1) * s + jit(1.5))},${f(y + Math.sin(a1) * s + jit(1.5))}`
+    + ` L${f(x)},${f(y)}`
+    + ` L${f(x + Math.cos(a2) * s + jit(1.5))},${f(y + Math.sin(a2) * s + jit(1.5))}`;
+}
+
+function bodyD(x, y, s) {
+  const w = 48 * s, top = y + 30 * s, bot = y + 100 * s;
+  return `M${f(x - w + jit(1))},${f(bot)} C${f(x - w + jit(2))},${f(top)} ${f(x + w + jit(2))},${f(top)} ${f(x + w + jit(1))},${f(bot)}`;
+}
+
+function wavyD(x1, y, x2) {
+  const n = Math.max(4, Math.round((x2 - x1) / 45));
+  const pts = [];
+  for (let i = 0; i <= n; i++) pts.push([x1 + (x2 - x1) * i / n + jit(3), y + Math.sin(i * 1.9) * 2.5 + jit(1.2)]);
+  return crPath(pts);
+}
+
+/* ---------------------------------------------------------------------
+   Drawing primitives
+   --------------------------------------------------------------------- */
+
+// Strokes that draw themselves, one after another.
+function drawStrokes(ds, o = {}) {
+  const g = mk('g', {}, o.in || layer, o.before || null);
+  const paths = ds.map(d => mk('path', {
+    d, fill: 'none', stroke: o.color || C.ink, 'stroke-width': o.w || 4,
+    'stroke-linecap': 'round', 'stroke-linejoin': 'round',
+  }, g));
+  g._paths = paths;
+  const [start, dur] = slot(o.dur ?? 450, o);
+  if (!S.animate) return g;
+  const lens = paths.map(p => p.getTotalLength());
+  const total = lens.reduce((a, b) => a + b, 0) || 1;
+  let t = start;
+  paths.forEach((p, i) => {
+    const L = lens[i], pd = dur * L / total;
+    p.style.strokeDasharray = `${L} ${L + 40}`;
+    p._p = new Set(['strokeDashoffset']);
+    p.animate([{ strokeDashoffset: L + 20 }, { strokeDashoffset: 0 }],
+      { duration: Math.max(30, pd), delay: t, fill: 'both', easing: o.ease || 'ease-in-out' });
+    t += pd;
+  });
+  return g;
+}
+
+// Pull a drawn line back in, from its end towards its start.
+function undraw(g, dur = 300, o = {}) {
+  const [start, d] = slot(dur, o);
+  if (!S.animate) { g.style.opacity = 0; return; }
+  g._paths.forEach(p => {
+    const L = p.getTotalLength();
+    p.style.strokeDasharray = `${L} ${L + 40}`;
+    const seen = p._p && p._p.has('strokeDashoffset');
+    p.animate([{ strokeDashoffset: 0 }, { strokeDashoffset: L + 20 }],
+      { duration: d, delay: start, fill: seen ? 'forwards' : 'both', easing: 'ease-in' });
+  });
+}
+
+// Text that appears letter by letter, like it is being written.
+// content: 'plain' or ['plain ', { t: 'word', c: colour, b: bold, u: underline }]
+function write(content, x, y, o = {}) {
+  return block(o, () => {
+    const size = o.size || 40;
+    const t = mk('text', {
+      x: f(x), y: f(y), 'font-size': size,
+      'font-family': o.font === 'marker' ? MARKER : HAND,
+      'font-weight': o.weight || (o.font === 'marker' ? 700 : 400),
+      fill: o.color || C.ink, 'text-anchor': o.anchor || 'start',
+      opacity: o.opacity,
+    }, o.in || layer);
+    t.setAttributeNS(XML_NS, 'xml:space', 'preserve');
+    if (o.rotate) t.setAttribute('transform', `rotate(${o.rotate} ${f(x)} ${f(y)})`);
+    const segs = (Array.isArray(content) ? content : [content]).map(s => typeof s === 'string' ? { t: s } : s);
+    const spans = [], unders = [];
+    for (const sg of segs) {
+      const i0 = spans.length;
+      for (const ch of sg.t) {
+        const s = mk('tspan', {}, t);
+        s.textContent = ch;
+        if (sg.c) s.setAttribute('fill', sg.c);
+        if (sg.b) s.setAttribute('font-weight', 700);
+        spans.push(s);
+      }
+      if (sg.u && spans.length > i0) unders.push([i0, spans.length - 1, sg.c || o.color || C.ink]);
+    }
+    const [start, dur] = slot(o.dur ?? Math.min(1500, 60 + spans.length * 30));
+    if (S.animate && spans.length) {
+      const per = dur / spans.length;
+      spans.forEach((s, i) => s.animate([{ fillOpacity: 0 }, { fillOpacity: 1 }],
+        { duration: 130, delay: start + i * per, fill: 'both' }));
+    }
+    for (const [a, b, col] of unders) {
+      const p0 = t.getStartPositionOfChar(a), p1 = t.getEndPositionOfChar(b);
+      const uy = p0.y + size * 0.18;
+      drawStrokes([lineD(p0.x - 4, uy, p1.x + 6, uy + jit(2), { bow: 0.03 })],
+        { in: o.in, color: col, w: Math.max(3, size / 12), dur: 280 });
+    }
+    t._spans = spans;
+    return t;
+  });
+}
+
+/* ---------------------------------------------------------------------
+   Bigger pieces: people, cards, stamps, captions, questions
+   --------------------------------------------------------------------- */
+
+// A person: circle head, shoulders, little face, name label.
+// label: 'below' (default), 'right' or 'left'. sub: small second line.
+function person(x, y, name, o = {}) {
+  const s = o.scale || 1, col = o.color || C.blue, sp = o.fast ? 0.55 : 1;
+  return block(o, () => {
+    const g = mk('g', {}, o.in || layer);
+    const av = mk('g', {}, g);
+    drawStrokes([ellipseD(x, y, 30 * s, 31 * s)], { in: av, color: col, w: 4.2, dur: 280 * sp });
+    drawStrokes([bodyD(x, y, s)], { in: av, color: col, w: 4.2, dur: 230 * sp });
+    const face = mk('g', {}, av);
+    mk('circle', { cx: f(x - 10 * s), cy: f(y - 5 * s), r: f(3.2 * s), fill: col }, face);
+    mk('circle', { cx: f(x + 10 * s), cy: f(y - 5 * s), r: f(3.2 * s), fill: col }, face);
+    mk('path', {
+      d: `M${f(x - 11 * s)},${f(y + 8 * s)} Q${f(x)},${f(y + 19 * s)} ${f(x + 11 * s)},${f(y + 8 * s)}`,
+      fill: 'none', stroke: col, 'stroke-width': 3, 'stroke-linecap': 'round',
+    }, face);
+    play(face, [{ opacity: 0 }, { opacity: 1 }], 140 * sp);
+    const lab = mk('g', {}, g);
+    if (name) {
+      const pos = o.label || 'below';
+      const size = Math.round(36 * Math.max(0.9, Math.min(s, 1.1)));
+      let lx = x, ly = y + 138 * s, anchor = 'middle';
+      if (pos !== 'below') {
+        lx = pos === 'right' ? x + 50 * s + 12 : x - 50 * s - 12;
+        anchor = pos === 'right' ? 'start' : 'end';
+        ly = y + (o.sub ? 2 : 12) * s;
+      }
+      write(name, lx, ly, { in: lab, size, weight: 700, anchor, gap: -60 * sp, dur: o.fast ? 160 : undefined });
+      if (o.sub) write(o.sub, lx, ly + size * 0.86, { in: lab, size: Math.round(size * 0.74), anchor, color: C.grey, dur: o.fast ? 160 : undefined });
+    }
+    return { g, av, lab, x, y, s, cy: y + 35 * s };
+  });
+}
+
+// An arrow from (x1,y1) to (x2,y2): the line draws, then the head.
+function arrow(x1, y1, x2, y2, o = {}) {
+  return block(o, () => {
+    const g = mk('g', {}, o.in || layer);
+    drawStrokes([lineD(x1, y1, x2, y2, { bow: o.bow ?? 0.015 })], { in: g, color: o.color, w: o.w, dur: o.dur ?? 500 });
+    drawStrokes([headD(x2, y2, Math.atan2(y2 - y1, x2 - x1), o.size || 22)], { in: g, color: o.color, w: o.w, dur: 160 });
+    return g;
+  });
+}
+
+// A curved arrow (cubic: start, two control points, end).
+function curveArrow(x0, y0, c1x, c1y, c2x, c2y, x1, y1, o = {}) {
+  return block(o, () => {
+    const g = mk('g', {}, o.in || layer);
+    drawStrokes([curveD(x0, y0, c1x, c1y, c2x, c2y, x1, y1)], { in: g, color: o.color, w: o.w || 4.5, dur: o.dur ?? 800 });
+    drawStrokes([headD(x1, y1, Math.atan2(y1 - c2y, x1 - c2x), o.size || 22)], { in: g, color: o.color, w: o.w || 4.5, dur: 160 });
+    return g;
+  });
+}
+
+// A loose arrow head drawn around (0,0) pointing right. Position it with
+// a CSS transform so it can slide along a line and turn around.
+function arrowHead(o = {}) {
+  const s = o.size || 22;
+  const g = mk('g', {}, o.in || layer);
+  mk('path', {
+    d: `M${f(-s + jit(1.5))},${f(-s * 0.5 + jit(1.5))} L0,0 L${f(-s + jit(1.5))},${f(s * 0.5 + jit(1.5))}`,
+    fill: 'none', stroke: o.color || C.ink, 'stroke-width': o.w || 4.5,
+    'stroke-linecap': 'round', 'stroke-linejoin': 'round',
+  }, g);
+  return g;
+}
+
+// Aadhaar-style ID card.
+function idCard(cx, cy, name, num, o = {}) {
+  const w = 330, h = 200, L = cx - w / 2, Tp = cy - h / 2;
+  const build = () => block(o, () => {
+    const g = mk('g', {}, o.in || layer);
+    const bg = mk('rect', { x: L, y: Tp, width: w, height: h, rx: 12, fill: C.paper }, g);
+    drawStrokes(rectDs(L, Tp, w, h, { over: 4 }), { in: g, w: 4.2, dur: 520 });
+    fadeIn(bg, 400, { with: true });
+    write('AADHAAR', L + 22, Tp + 42, { in: g, font: 'marker', size: 36, color: C.blue, dur: 260 });
+    drawStrokes([lineD(L + 16, Tp + 56, L + w - 16, Tp + 56, { bow: 0.01 })], { in: g, w: 2.6, color: C.blue, dur: 200 });
+    drawStrokes(rectDs(L + 20, Tp + 70, 76, 100, { over: 2 }), { in: g, w: 3, dur: 280 });
+    drawStrokes([ellipseD(L + 58, Tp + 100, 13, 14), bodyD(L + 58, Tp + 100, 0.44)], { in: g, w: 2.6, dur: 240 });
+    write(name, L + 114, Tp + 102, { in: g, size: 32, weight: 700, dur: 240 });
+    drawStrokes([lineD(L + 114, Tp + 126, L + 292, Tp + 126), lineD(L + 114, Tp + 146, L + 250, Tp + 146)],
+      { in: g, w: 3, color: C.faint, dur: 260 });
+    write(num, L + 114, Tp + 182, { in: g, size: 25, weight: 700, dur: 300 });
+    return g;
+  });
+  return o.instant ? still(build) : build();
+}
+
+// Big rubber stamp that thunks onto the board.
+function stamp(text, cx, cy, o = {}) {
+  const col = o.color || C.red, size = o.size || 104, rot = o.rot ?? -7;
+  return block(o, () => {
+    const g = mk('g');
+    g.style.transformOrigin = `${cx}px ${cy}px`;
+    const inner = mk('g', { transform: `rotate(${rot} ${cx} ${cy})` }, g);
+    const bg = mk('rect', { fill: C.board, opacity: 0.92 }, inner);
+    const ink = mk('g', { filter: 'url(#stampInk)' }, inner);
+    const t = mk('text', {
+      x: cx, y: f(cy + size * 0.33), 'text-anchor': 'middle', 'font-family': MARKER,
+      'font-weight': 700, 'font-size': size, 'letter-spacing': 4, fill: col,
+    }, ink);
+    t.textContent = text;
+    const w = t.getComputedTextLength() + 110, h = size * 1.2;
+    const x0 = cx - w / 2, y0 = cy - h / 2;
+    Object.entries({ x: f(x0), y: f(y0), width: f(w), height: f(h), rx: 16 }).forEach(([k, v]) => bg.setAttribute(k, v));
+    const box = (ds, sw) => ds.forEach(d => mk('path', { d, fill: 'none', stroke: col, 'stroke-width': sw, 'stroke-linecap': 'round' }, ink));
+    box(rectDs(x0, y0, w, h, { over: 3 }), 7);
+    box(rectDs(x0 + 12, y0 + 12, w - 24, h - 24, { over: 2 }), 3);
+    play(g, [
+      { transform: 'scale(2.1)', opacity: 0 },
+      { transform: 'scale(0.95)', opacity: 1, offset: 0.8 },
+      { transform: 'scale(1)', opacity: 1 },
+    ], 380, { ease: 'cubic-bezier(.6,0,.9,.5)' });
+    if (S.animate) {
+      shakeG.animate([
+        { transform: tr(0, 0) }, { transform: tr(7, 4) }, { transform: tr(-6, -3) },
+        { transform: tr(3, 2) }, { transform: tr(0, 0) },
+      ], { duration: 300, delay: T.last + 300 * SPEED });
+    }
+    return g;
+  });
+}
+
+// Caption along the bottom. Replaces any caption already there.
+function clearCaption(st, o = {}) {
+  const old = st.cap;
+  if (!old) return;
+  st.cap = null;
+  if (!S.animate) { old.remove(); return; }
+  play(old, [{ opacity: 1 }, { opacity: 0 }], 220, o);
+}
+function caption(st, lines, o = {}) {
+  clearCaption(st, { t: 0 }); // the old caption goes as soon as the step starts
+  return block(o, () => {
+    const size = o.size || 44, lh = Math.round(size * 1.3), n = lines.length;
+    const last = n === 1 ? 818 : 846;
+    const g = mk('g');
+    const els = lines.map((ln, i) => write(ln, 800, last - (n - 1 - i) * lh,
+      { in: g, size, anchor: 'middle', gap: i === 0 ? -80 : 60 }));
+    st.cap = g;
+    return { g, els };
+  });
+}
+
+// The two-question check. Question first, answer on the next press.
+const QY = [790, 848];
+function ask(st, i, q) {
+  if (i === 0) clearCaption(st);
+  st.qmarks = st.qmarks || [];
+  write(q, 975, QY[i], { size: 42, anchor: 'end', gap: i === 0 ? 120 : 0 });
+  st.qmarks[i] = write('?', 1012, QY[i], { size: 48, weight: 700, color: C.faint });
+}
+function answer(st, i, yes) {
+  if (st.qmarks && st.qmarks[i]) fadeOut(st.qmarks[i], 150);
+  const col = yes ? C.green : C.red;
+  const t = write(yes ? 'YES' : 'NO', 1012, QY[i], { size: 48, weight: 700, color: col, with: true, offset: 60 });
+  const w = t.getComputedTextLength();
+  drawStrokes([ellipseD(1012 + w / 2, QY[i] - 16, w / 2 + 24, 24, { n: 14 })], { color: col, w: 3.6, dur: 380, gap: 40 });
+}
+
+// Scene title, top left, with a wavy underline. The number is the scene's
+// position in SCENES.
+let sceneNo = 0;
+function heading(text) {
+  block({}, () => {
+    const n = write(String(sceneNo), 86, 98, { font: 'marker', size: 64, color: C.red, dur: 120 });
+    const x = 86 + n.getComputedTextLength() + 14;
+    const t = write(text, x, 98, { font: 'marker', size: 64 });
+    const w = t.getComputedTextLength();
+    drawStrokes([wavyD(x - 2, 116, x + 6 + w)], { color: C.blue, w: 3.5, dur: 420 });
+  });
+}
+
+/* ---------------------------------------------------------------------
+   Tables
+   d = { x, y, cols: [widths], head: header height, row: row height }
+   --------------------------------------------------------------------- */
+const rowsOf = (d, n) => Array.from({ length: n }, (_, r) => d.y + d.head + d.row * r + d.row / 2);
+function colsOf(d) { const xs = [d.x]; d.cols.forEach(w => xs.push(xs[xs.length - 1] + w)); return xs; }
+const cellText = v => (v != null && typeof v === 'object' ? v : { t: String(v) });
+
+// Draw the grid, the header row and the table name.
+// o.nameAt: [x, y] to put the name somewhere other than above the table.
+function table(d, headers, nRows, name, o = {}) {
+  return block(o, () => {
+    const xs = colsOf(d), right = xs[xs.length - 1], bottom = d.y + d.head + d.row * nRows;
+    const [nx, ny] = o.nameAt || [d.x, d.y - 18];
+    write(name, nx, ny, { font: 'marker', size: o.nameSize || 44, color: C.blue });
+    const ds = [lineD(d.x, d.y, right, d.y), lineD(d.x, d.y + d.head, right, d.y + d.head)];
+    for (let r = 1; r < nRows; r++) ds.push(lineD(d.x, d.y + d.head + d.row * r, right, d.y + d.head + d.row * r, { bow: 0.004 }));
+    ds.push(lineD(d.x, bottom, right, bottom));
+    xs.forEach(x => ds.push(lineD(x, d.y, x, bottom, { bow: 0.004 })));
+    drawStrokes(ds, { w: 3.6, dur: o.dur ?? 750, with: true, offset: 120 });
+    headers.forEach((h, i) => write(h, (xs[i] + xs[i + 1]) / 2, d.y + d.head * 0.68,
+      { anchor: 'middle', size: o.headSize || 28, weight: 700, with: true, offset: i ? 60 : 380 }));
+    return { d, xs, right, bottom, rows: rowsOf(d, nRows) };
+  });
+}
+
+// Fill one row. vals: plain values or { t, c }. null leaves a cell empty.
+function cells(tb, r, vals, o = {}) {
+  const size = o.size || 28;
+  return block(o, () => vals.map((v, c) => {
+    if (v == null) return null;
+    const { t, c: col } = cellText(v);
+    return write(t, (tb.xs[c] + tb.xs[c + 1]) / 2, tb.rows[r] + size * 0.36,
+      { anchor: 'middle', size, weight: 700, color: col || C.ink, dur: o.dur || 160 });
+  }));
+}
+
+// A row tries to join the bottom of a table, gets refused and bounces off.
+function rejectRow(tb, vals, o = {}) {
+  return block(o, () => {
+    const d = tb.d, x0 = d.x, x1 = tb.right, y0 = tb.bottom, h = d.row, size = o.size || 28;
+    let lines;
+    const g = still(() => {
+      const g = mk('g');
+      mk('rect', { x: x0, y: y0, width: x1 - x0, height: h, fill: C.paper }, g);
+      const ds = [lineD(x0, y0 + h, x1, y0 + h, { bow: 0.004 }), lineD(x0, y0, x0, y0 + h), lineD(x1, y0, x1, y0 + h)];
+      tb.xs.slice(1, -1).forEach(x => ds.push(lineD(x, y0, x, y0 + h)));
+      lines = drawStrokes(ds, { in: g, w: 3.6 });
+      vals.forEach((v, c) => {
+        const { t, c: col } = cellText(v);
+        write(t, (tb.xs[c] + tb.xs[c + 1]) / 2, y0 + h / 2 + size * 0.36,
+          { in: g, anchor: 'middle', size, weight: 700, color: col || C.ink });
+      });
+      return g;
+    });
+    g.style.transformBox = 'fill-box';
+    g.style.transformOrigin = 'center';
+    play(g, [{ transform: trr(180, 26, 7), opacity: 0 }, { transform: trr(0, 0, 0), opacity: 1 }], 560, { ease: EASE.land });
+    // o.attempt: [x, y] the row reaches out to before it gets refused
+    const reach = o.attempt && drawStrokes([lineD(x1 + 6, y0 + h / 2, o.attempt[0], o.attempt[1], { bow: 0.02 })],
+      { color: C.red, w: 4, dur: 380, gap: 80 });
+    // nope: the row goes red and shakes
+    lines._paths.forEach((p, i) => play(p, [{ stroke: C.ink }, { stroke: C.red }], 160, i ? { with: true } : { gap: reach ? 60 : 180 }));
+    play(g, [0, -9, 8, -5, 3, 0].map((x, i) => ({ transform: trr(x, i % 2 ? 2 : -2, i % 2 ? -1.5 : 1.5) })), 420, { with: true });
+    const [bx, by, br] = o.bounce || [200, 14, 8];
+    play(g, [{ transform: trr(0, 0, 0) }, { transform: trr(bx, by, br) }], 520, { gap: 40, ease: EASE.bounce });
+    if (reach) undraw(reach, 280, { with: true, offset: 20 });
+    drawStrokes([lineD(x0 + 12, y0 + 6, x1 - 12, y0 + h - 6, { bow: 0.03 }), lineD(x1 - 12, y0 + 6, x0 + 12, y0 + h - 6, { bow: 0.03 })],
+      { in: g, color: C.red, w: 6, dur: 380, gap: 100 });
+    return g;
+  });
+}
+
+/* =====================================================================
+   Shared drawings
+   ===================================================================== */
+
+// Hiren and his team (scene 2, and again in scene 6)
+const TEAM = {
+  mgr: { x: 300, y: 380 },
+  emps: [
+    { x: 1060, y: 150, name: 'Neha', id: 101 },
+    { x: 1150, y: 270, name: 'Arjun', id: 102 },
+    { x: 1190, y: 390, name: 'Kavya', id: 103 },
+    { x: 1150, y: 510, name: 'Dev', id: 104 },
+    { x: 1060, y: 630, name: 'Isha', id: 105 },
+  ],
+};
+const empPt = e => [e.x - 46, e.y + 24];
+const mgrPt = i => [368, 345 + i * 32];
+
+function drawManager(st, o = {}) {
+  st.mgr = person(TEAM.mgr.x, TEAM.mgr.y, 'Hiren', { color: C.green, sub: 'manager', scale: 1.15, ...o });
+}
+function drawEmployees(st, o = {}) {
+  st.emps = []; st.links = [];
+  stagger(TEAM.emps, o.gap ?? 480, (e, i) => {
+    st.emps[i] = person(e.x, e.y, e.name, { color: C.blue, scale: 0.78, label: 'right', fast: o.fast });
+    const [ex, ey] = empPt(e), [mx, my] = mgrPt(i);
+    st.links[i] = drawStrokes([lineD(ex, ey, mx, my, { bow: 0.006 })], { w: 4, dur: o.fast ? 260 : 440 });
+  });
+}
+// Where an arrow head sits: at the employee end (manager -> employee)
+// or, flipped, at the manager end (employee -> manager).
+function headPose(i, flipped) {
+  const [ex, ey] = empPt(TEAM.emps[i]), [mx, my] = mgrPt(i);
+  const a = Math.atan2(ey - my, ex - mx), deg = a * 180 / Math.PI;
+  const ux = Math.cos(a), uy = Math.sin(a);
+  return flipped
+    ? `${tr(mx + ux * 4, my + uy * 4)} rotate(${f(deg + 180)}deg)`
+    : `${tr(ex - ux * 4, ey - uy * 4)} rotate(${f(deg)}deg)`;
+}
+function drawHeads(st, flipped, o = {}) {
+  st.heads = stagger(TEAM.emps, o.gap ?? 90, (e, i) => {
+    const h = arrowHead({ size: 22, w: 4.5 });
+    h.style.transform = headPose(i, flipped);
+    fadeIn(h, 160);
+    return h;
+  });
+}
+
+// Students, teachers and who studies with whom (scene 4)
+const STUDENTS = [
+  { name: 'Asha', y: 200 }, { name: 'Rohan', y: 345 },
+  { name: 'Priya', y: 490 }, { name: 'Kabir', y: 635 },
+];
+const TEACHERS = [{ name: 'Maths', y: 240 }, { name: 'Science', y: 420 }, { name: 'Art', y: 600 }];
+const ENROL = [[0, 0], [0, 1], [1, 0], [1, 2], [2, 1], [2, 2], [3, 0], [3, 2]];
+const SX = 250, TX = 1350;
+const REG = { x: 620, y: 132, w: 360, h: 584, row0: 262, rowH: 57 };
+// spread lines that share an end point so they don't sit on top of each other
+const spread = (side, r) => {
+  const mine = ENROL.map((e, k) => [e[side], k]).filter(([v]) => v === ENROL[r][side]).map(([, k]) => k);
+  return (mine.indexOf(r) - (mine.length - 1) / 2) * 12;
+};
+const sPt = r => [SX + 46, STUDENTS[ENROL[r][0]].y + 24 + spread(0, r)];
+const tPt = r => [TX - 46, TEACHERS[ENROL[r][1]].y + 24 + spread(1, r)];
+
+function drawRegister() {
+  return still(() => {
+    const g = mk('g');
+    mk('rect', { x: REG.x, y: REG.y, width: REG.w, height: REG.h, rx: 8, fill: C.paper }, g);
+    for (let r = 0; r < ENROL.length; r++) {
+      const yy = REG.row0 + r * REG.rowH + 14;
+      drawStrokes([lineD(REG.x + 22, yy, REG.x + REG.w - 18, yy, { bow: 0.004 })], { in: g, color: '#bccbe6', w: 2 });
+    }
+    drawStrokes(rectDs(REG.x, REG.y, REG.w, REG.h, { over: 3 }), { in: g, w: 4.5 });
+    for (let k = 0; k < 9; k++) {
+      drawStrokes([ellipseD(REG.x + 28 + k * 38, REG.y, 7, 12, { n: 10 })], { in: g, w: 3 });
+    }
+    write([{ t: 'Enrolment register', u: true }], 800, REG.y + 56, { in: g, font: 'marker', size: 42, anchor: 'middle', color: C.blue });
+    return g;
+  });
+}
+
+// Primary key (scene 2)
+const PKP = { r1: 190, r2: 570, z: 900, y: 280, badgeY: 478 };
+const CUS = { x: 1130, y: 300, cols: [120, 210], head: 56, row: 66 };
+function badge(x, text, o = {}) {
+  return block(o, () => {
+    const g = mk('g');
+    const t = write(text, x, PKP.badgeY, { in: g, font: 'marker', size: 44, color: C.blue, anchor: 'middle', dur: 260 });
+    const w = t.getComputedTextLength();
+    drawStrokes([ellipseD(x, PKP.badgeY - 15, w / 2 + 26, 30)], { in: g, color: C.blue, w: 3.5, dur: 320 });
+    return g;
+  });
+}
+
+// Foreign key (scene 3)
+const SLIP = { x: 860, y: 230, w: 350, h: 270 };
+const ORD = { x: 90, y: 280, cols: [110, 170, 230], head: 56, row: 66 };
+const CUS2 = { x: 840, y: 280, cols: [110, 200], head: 56, row: 66 };
+const KEYNOTE = { x: 1196, y: 296, w: 362, h: 236 };
+// A small circled id written next to someone.
+function idTag(x, y, text, o = {}) {
+  return block(o, () => {
+    const t = write(text, x, y, { in: o.in, font: 'marker', size: 38, color: C.blue, dur: 200 });
+    const w = t.getComputedTextLength();
+    drawStrokes([ellipseD(x + w / 2, y - 13, w / 2 + 20, 24)], { in: o.in, color: C.blue, w: 3.2, dur: 260 });
+    return t;
+  });
+}
+// A dashed empty row under a table: the row that isn't there.
+function ghostRow(tb, vals) {
+  return still(() => {
+    const d = tb.d, y0 = tb.bottom, h = d.row, g = mk('g');
+    mk('rect', {
+      x: d.x, y: y0, width: tb.right - d.x, height: h, fill: 'none',
+      stroke: C.faint, 'stroke-width': 3, 'stroke-dasharray': '4 10', 'stroke-linecap': 'round',
+    }, g);
+    vals.forEach((v, c) => write(String(v), (tb.xs[c] + tb.xs[c + 1]) / 2, y0 + h / 2 + 11,
+      { in: g, anchor: 'middle', size: 30, weight: 700, color: C.faint }));
+    return g;
+  });
+}
+
+// From people to tables (scene 6)
+const MT = { x: 90, y: 272, cols: [110, 260], head: 56, row: 76 };
+const ET = { x: 760, y: 232, cols: [120, 250], head: 56, row: 72 };
+
+// One person turns into an ID card in place.
+function morphToCard(it) {
+  return block({}, () => {
+    const { p, big } = it;
+    const { cx, cy, w, h } = it.card, L = cx - w / 2, Tp = cy - h / 2;
+    const bg = mk('rect', { x: L, y: Tp, width: w, height: h, rx: 10, fill: C.paper });
+    const frame = drawStrokes(rectDs(L, Tp, w, h, { over: 3 }), { w: 3.6, dur: 380, t: 120 * SPEED });
+    layer.appendChild(p.g); // keep the person above the new card
+    fadeIn(bg, 200, { t: 0 });
+    fadeOut(p.lab, 200, { t: 0 });
+    const k = (big ? 82 : 62) / (130 * p.s);
+    const slotX = L + (big ? 46 : 38);
+    p.av.style.transformOrigin = `${f(p.x)}px ${f(p.cy)}px`;
+    const avTf = `${tr(slotX - p.x, cy - p.cy)} scale(${f2(k)})`;
+    play(p.av, [{ transform: `${tr(0, 0)} scale(1)` }, { transform: avTf }], 560, { t: 0, ease: EASE.inOut });
+    const tx = L + (big ? 92 : 78), ny = cy - (big ? 8 : 6), iy = cy + (big ? 34 : 30);
+    const nm = write(it.name, tx, ny, { size: big ? 34 : 30, weight: 700, t: 300 * SPEED });
+    const lbl = write('id:', tx, iy, { size: big ? 26 : 24, color: C.grey });
+    const vx = tx + lbl.getComputedTextLength() + 8;
+    const val = write(it.id, vx, iy, { size: big ? 28 : 26, weight: 700 });
+    return { ...it, bg, frame, nm, lbl, val, avTf, nmXY: [tx, ny], valXY: [vx, iy] };
+  });
+}
+
+// An ID card slides into its row: the text lands in the cells.
+function slideIntoRow(c, d, r) {
+  return block({}, () => {
+    const xs = colsOf(d), rowCy = rowsOf(d, r + 1)[r], base = rowCy + 10;
+    fadeOut(c.bg, 300, { t: 0 });
+    fadeOut(c.frame, 300, { t: 0 });
+    fadeOut(c.lbl, 200, { t: 0 });
+    const p = c.p, k = (c.big ? 60 : 50) / (130 * p.s);
+    play(p.av, [{ transform: c.avTf }, { transform: `${tr(d.x - 40 - p.x, rowCy - p.cy)} scale(${f2(k)})` }],
+      680, { t: 0, ease: EASE.inOut });
+    const vw = c.val.getComputedTextLength();
+    move(c.val, (xs[0] + xs[1]) / 2 - vw / 2 - c.valXY[0], base - c.valXY[1], 680, { t: 40 * SPEED });
+    move(c.nm, xs[1] + 18 - c.nmXY[0], base - c.nmXY[1], 680, { t: 80 * SPEED });
+  });
+}
+
+// Self-reference (scene 7)
+const SRT = { x: 820, y: 250, cols: [100, 230, 200], head: 56, row: 78 };
+
+// Where does the foreign key go (scene 8)
+const PEO = { x: 200, y: 236, cols: [136, 200], head: 52, row: 60 };
+const CRD = { x: 200, y: 474, cols: [136, 200], head: 52, row: 60 };
+const STU = { x: 850, y: 236, cols: [74, 150], head: 52, row: 60 };
+const TEA = { x: 1316, y: 236, cols: [74, 170], head: 52, row: 60 };
+const ENR = { x: 1046, y: 474, cols: [150, 150], head: 48, row: 52 };
+const MINI = { nameSize: 40, headSize: 26 };
+
+// Little dot diagrams for the recap grid.
+function miniIcon(cx, cy, ic) {
+  block({}, () => {
+    const ys = n => (n === 1 ? [cy] : [cy - 20, cy, cy + 20]);
+    const A = ys(ic.a).map(y => [cx - 62, y]), B = ys(ic.b).map(y => [cx + 62, y]);
+    const ds = [];
+    if (ic.j) {
+      A.forEach(([x, y]) => ds.push(lineD(x, y, cx - 13, cy, { bow: 0.02 })));
+      B.forEach(([x, y]) => ds.push(lineD(cx + 13, cy, x, y, { bow: 0.02 })));
+      ds.push(...rectDs(cx - 13, cy - 16, 26, 32, { over: 2 }));
+    } else if (A.length === 1) {
+      B.forEach(([x, y]) => ds.push(lineD(A[0][0], A[0][1], x, y, { bow: 0.02 })));
+    } else {
+      A.forEach(([x, y]) => ds.push(lineD(x, y, B[0][0], B[0][1], { bow: 0.02 })));
+    }
+    const dots = mk('g');
+    A.forEach(([x, y]) => mk('circle', { cx: x, cy: y, r: 7, fill: C.blue }, dots));
+    B.forEach(([x, y]) => mk('circle', { cx: x, cy: y, r: 7, fill: C.green }, dots));
+    fadeIn(dots, 160);
+    drawStrokes(ds, { w: 3, dur: 380 });
+    write('A', cx - 96, cy + 10, { font: 'marker', size: 32, color: C.blue, anchor: 'middle', dur: 100, with: true });
+    write('B', cx + 96, cy + 10, { font: 'marker', size: 32, color: C.green, anchor: 'middle', dur: 100, with: true, offset: 60 });
+  });
+}
+
+const G = { x0: 230, x1: 430, x2: 880, x3: 1330, y0: 290, y1: 350, y2: 530, y3: 710 };
+function fillCell(r, c, title, color, hint, icon) {
+  const cx = c === 0 ? (G.x1 + G.x2) / 2 : (G.x2 + G.x3) / 2;
+  const cy = r === 0 ? (G.y1 + G.y2) / 2 : (G.y2 + G.y3) / 2;
+  miniIcon(cx, cy - 46, icon);
+  write(title, cx, cy + 24, { font: 'marker', size: 54, color, anchor: 'middle', gap: 40 });
+  write(hint, cx, cy + 62, { size: 26, color: C.grey, anchor: 'middle' });
+}
+
+/* =====================================================================
+   SCENES  (index 0 is the title slide, then scenes 1 to 10)
+   ===================================================================== */
+const SCENES = [
+
+  /* Title --------------------------------------------------------------- */
+  {
+    title: 'Database Relations',
+    steps: [
+      st => {
+        const text = 'Database Relations';
+        const size = Math.min(176, Math.floor(176 * 1360 / measure(text, 176, MARKER, 700)));
+        const base = 450 + size * 0.3;
+        const t = write(text, 800, base, { font: 'marker', size, anchor: 'middle', gap: 200, dur: 1300 });
+        const w = t.getComputedTextLength();
+        drawStrokes([wavyD(800 - w / 2, base + size * 0.2, 800 + w / 2 + 10)], { color: C.blue, w: 6, dur: 700, gap: 80 });
+      },
+    ],
+  },
+
+  /* Relationships are everywhere ------------------------------------- */
+  {
+    title: 'Relationships are everywhere',
+    steps: [
+      st => {
+        heading('Relationships are everywhere');
+        st.you = person(480, 570, 'You', { color: C.blue, gap: 100 });
+        st.mate = person(1120, 570, 'Teammate', { color: C.blue, with: true, offset: 300 });
+        st.boss = person(800, 250, 'Hiren', { color: C.green, sub: 'manager', with: true, offset: 300 });
+      },
+      st => {
+        drawStrokes([lineD(548, 610, 1052, 610, { bow: 0.02 })], { w: 4.5, dur: 650 });
+        write('peers', 800, 588, { anchor: 'middle', size: 40, weight: 700, color: C.red, gap: 40 });
+      },
+      st => {
+        arrow(510, 525, 728, 362, { w: 4.5, dur: 600 });
+        write('reports to', 590, 440, { anchor: 'end', size: 36, weight: 700, color: C.red, with: true, offset: 300 });
+        arrow(1090, 525, 872, 362, { w: 4.5, dur: 600, gap: 120 });
+        write('reports to', 1010, 440, { size: 36, weight: 700, color: C.red, with: true, offset: 300 });
+      },
+      st => caption(st, [
+        'You already know relationships.',
+        ['A database just ', { t: 'writes them down', c: C.blue, b: true, u: true }, '.'],
+      ]),
+    ],
+  },
+
+  /* Primary key ------------------------------------------------------- */
+  {
+    title: 'Primary key',
+    steps: [
+      st => {
+        heading('Primary key');
+        person(PKP.r1, PKP.y, 'Rahul', { color: C.blue, gap: 100 });
+        person(PKP.r2, PKP.y, 'Rahul', { color: C.blue, with: true, offset: 350 });
+        caption(st, ['First, a database must know who is who.', 'Meet two customers: Rahul. And Rahul.'], { gap: 100 });
+      },
+      st => {
+        st.huh = write('?', 380, 380, { font: 'marker', size: 150, color: C.red, anchor: 'middle', dur: 200 });
+        caption(st, ['"Deliver this to Rahul." Which Rahul?', 'Names repeat. Names change.']);
+      },
+      st => {
+        fadeOut(st.huh, 200, { t: 0 });
+        badge(PKP.r1, 'id: 7', { gap: 100 });
+        badge(PKP.r2, 'id: 12', { gap: 150 });
+        caption(st, [
+          'Give each one a number nobody else has.',
+          ['That number is their ', { t: 'identity', c: C.blue, b: true, u: true }, '.'],
+        ], { gap: 100 });
+      },
+      st => {
+        write([{ t: 'PRIMARY KEY', u: true }], 380, 352, { font: 'marker', size: 46, color: C.blue, anchor: 'middle' });
+        arrow(322, 374, 246, 440, { color: C.blue, w: 3.6, size: 16, dur: 260 });
+        arrow(438, 374, 514, 440, { color: C.blue, w: 3.6, size: 16, dur: 260, gap: 60 });
+        caption(st, [
+          ["That's the ", { t: 'PRIMARY KEY', c: C.blue, b: true }, '.'],
+          'Unique. Never empty. Never changes.',
+        ], { gap: 100 });
+      },
+      st => {
+        person(PKP.z, PKP.y, 'Zoya', { color: C.blue, gap: 100 });
+        // the database prints the next token, like at a counter
+        const tk = still(() => {
+          const g = mk('g');
+          mk('rect', { x: 975, y: 140, width: 124, height: 92, rx: 6, fill: C.paper }, g);
+          drawStrokes(rectDs(975, 140, 124, 92, { over: 2 }), { in: g, w: 3.2 });
+          write('TOKEN', 1037, 170, { in: g, size: 22, weight: 700, color: C.grey, anchor: 'middle' });
+          write('13', 1037, 220, { in: g, font: 'marker', size: 54, color: C.blue, anchor: 'middle' });
+          return g;
+        });
+        tk.style.transformOrigin = '1037px 186px';
+        play(tk, [{ transform: trr(0, -50, 0), opacity: 0 }, { transform: trr(0, 0, 8), opacity: 1 }], 520, { gap: 120, ease: EASE.land });
+        badge(PKP.z, 'id: 13', { gap: 120 });
+        caption(st, [
+          'Zoya signs up. She gets the next number.',
+          ['Nobody picks their own. PostgreSQL calls it ', { t: 'IDENTITY', c: C.blue, b: true }, '.'],
+        ], { gap: 100 });
+      },
+      st => {
+        st.cus = table(CUS, ['id', 'name'], 3, 'customers', { gap: 60 });
+        stagger([[7, 'Rahul'], [12, 'Rahul'], [13, 'Zoya']], 200, (v, r) => cells(st.cus, r, v, { size: 30 }), { gap: 40 });
+        write('PK', st.cus.xs[1] - 6, CUS.y + 40, { font: 'marker', size: 30, color: C.blue, anchor: 'end', gap: 60 });
+        stagger(st.cus.rows, 120, cy => drawStrokes([ellipseD((st.cus.xs[0] + st.cus.xs[1]) / 2, cy + 1, 40, 24)],
+          { color: C.blue, w: 3.5, dur: 300 }));
+        caption(st, ['In a table, the id column is the primary key.', 'Two Rahuls are fine. Their ids are different.'], { gap: 100 });
+      },
+      st => {
+        rejectRow(st.cus, [{ t: '7', c: C.red }, 'Priya'], { size: 30, bounce: [70, 36, 6], gap: 100 });
+        caption(st, ['Another id 7? The database refuses.'], { gap: 100 });
+      },
+      st => caption(st, [
+        [{ t: 'PRIMARY KEY', c: C.blue, b: true }, ' = who I am.'],
+        'Like a React key: unique, and it never changes.',
+      ], { size: 50, gap: 100 }),
+    ],
+  },
+
+  /* Foreign key ------------------------------------------------------- */
+  {
+    title: 'Foreign key',
+    steps: [
+      st => {
+        heading('Foreign key');
+        const B = st.board = mk('g');
+        person(230, 240, 'Rahul', { in: B, color: C.blue, scale: 0.9, label: 'right', gap: 100, fast: true });
+        idTag(287, 297, 'id: 7', { in: B });
+        person(230, 530, 'Rahul', { in: B, color: C.blue, scale: 0.9, label: 'right', fast: true });
+        idTag(287, 587, 'id: 12', { in: B });
+        // the order slip
+        block({ gap: 100 }, () => {
+          const sl = SLIP, g = mk('g', {}, B);
+          fadeIn(mk('rect', { x: sl.x, y: sl.y, width: sl.w, height: sl.h, rx: 8, fill: C.paper }, g), 260);
+          drawStrokes(rectDs(sl.x, sl.y, sl.w, sl.h, { over: 3 }), { in: g, w: 4, dur: 420, with: true });
+          write('ORDER #501', sl.x + 24, sl.y + 52, { in: g, font: 'marker', size: 42, color: C.blue });
+          drawStrokes([lineD(sl.x + 16, sl.y + 72, sl.x + sl.w - 16, sl.y + 72, { bow: 0.01 })], { in: g, w: 2.6, color: C.blue, dur: 180 });
+          write('1 x Pizza', sl.x + 24, sl.y + 136, { in: g, size: 38 });
+          drawStrokes([lineD(sl.x + 16, sl.y + 168, sl.x + sl.w - 16, sl.y + 168, { bow: 0.01 })], { in: g, w: 2.4, color: C.faint, dur: 180 });
+          const t = write('customer:', sl.x + 24, sl.y + 232, { in: g, size: 36, weight: 700 });
+          st.custX = sl.x + 24 + t.getComputedTextLength() + 14;
+        });
+        caption(st, ['Rahul orders a pizza.', 'The order must say who it is for.'], { gap: 100 });
+      },
+      st => {
+        st.nameT = write('Rahul', st.custX, SLIP.y + 232, { in: st.board, size: 36 });
+        st.l1 = drawStrokes([lineD(SLIP.x - 4, 450, 372, 290, { bow: 0.02 })], { in: st.board, w: 3.6, dur: 420, gap: 100 });
+        st.l2 = drawStrokes([lineD(SLIP.x - 4, 450, 390, 578, { bow: 0.02 })], { in: st.board, w: 3.6, dur: 420, with: true });
+        st.huh = write('?', 630, 470, { in: st.board, font: 'marker', size: 130, color: C.red, anchor: 'middle', dur: 200, gap: 60 });
+        caption(st, ['Write "Rahul"? Which Rahul?']);
+      },
+      st => {
+        fadeOut(st.huh, 200, { t: 0 });
+        fadeOut(st.l1, 250, { t: 0 });
+        fadeOut(st.l2, 250, { t: 0 });
+        const bb = st.nameT.getBBox();
+        drawStrokes([lineD(bb.x - 4, bb.y + bb.height * 0.6, bb.x + bb.width + 4, bb.y + bb.height * 0.52, { bow: 0.03 })],
+          { in: st.board, color: C.red, w: 4, dur: 260, gap: 100 });
+        write('7', bb.x + bb.width + 14, SLIP.y + 232, { in: st.board, size: 40, weight: 700, color: C.red });
+        arrow(SLIP.x - 6, 450, 376, 292, { in: st.board, color: C.red, w: 4.5, dur: 520, gap: 80 });
+        write([{ t: 'FOREIGN KEY', u: true }], SLIP.x + SLIP.w / 2, 568, { in: st.board, font: 'marker', size: 46, color: C.red, anchor: 'middle', gap: 40 });
+        caption(st, ['Write his id instead.', ["Rahul's id, kept on the order: ", { t: 'FOREIGN KEY', c: C.red, b: true }, '.']], { gap: 100 });
+      },
+      st => {
+        fadeOut(st.board, 350, { t: 0 });
+        st.ord = table(ORD, ['id', 'item', 'customer_id'], 3, 'orders', { headSize: 26, gap: 200 });
+        stagger([[501, 'Pizza', { t: '7', c: C.red }], [502, 'Coffee', { t: '13', c: C.red }], [503, 'Cake', { t: '7', c: C.red }]],
+          180, (v, r) => cells(st.ord, r, v, { size: 30 }));
+        st.cus = table(CUS2, ['id', 'name'], 3, 'customers', { headSize: 26, gap: 60 });
+        stagger([[7, 'Rahul'], [12, 'Rahul'], [13, 'Zoya']], 180, (v, r) => cells(st.cus, r, v, { size: 30 }));
+        write('PK', st.ord.xs[1] - 6, ORD.y + 40, { font: 'marker', size: 30, color: C.blue, anchor: 'end', gap: 60 });
+        write('PK', st.cus.xs[1] - 6, CUS2.y + 40, { font: 'marker', size: 30, color: C.blue, anchor: 'end', with: true });
+        write('FK', st.ord.right - 6, ORD.y + 40, { font: 'marker', size: 30, color: C.red, anchor: 'end', with: true, offset: 120 });
+        // each order points at its customer's row
+        stagger([[0, 0, -8], [1, 2, 0], [2, 0, 10]], 300, ([r, c, off]) =>
+          arrow(st.ord.right + 6, st.ord.rows[r], CUS2.x - 8, st.cus.rows[c] + off,
+            { color: C.red, w: 3.6, size: 16, bow: 0.04, dur: 380 }), { gap: 100 });
+        caption(st, ["Each order keeps its customer's id.", 'orders.customer_id points to customers.id.'], { gap: 100 });
+      },
+      st => {
+        fadeIn(ghostRow(st.cus, ['99', '?']), 300, { gap: 60 });
+        rejectRow(st.ord, [504, 'Tea', { t: '99', c: C.red }], {
+          size: 30, bounce: [-40, 46, -6], attempt: [CUS2.x - 8, st.cus.bottom + CUS2.row / 2], gap: 100,
+        });
+        caption(st, ['Customer 99? Nobody has that id.', 'The database refuses to save the order.'], { gap: 100 });
+      },
+      st => {
+        const N = KEYNOTE, g = mk('g', { transform: `rotate(-2 ${N.x + N.w / 2} ${N.y + N.h / 2})` });
+        fadeIn(mk('rect', { x: N.x, y: N.y, width: N.w, height: N.h, rx: 6, fill: C.sticky }, g), 260, { gap: 80 });
+        drawStrokes(rectDs(N.x, N.y, N.w, N.h, { over: 3 }), { in: g, w: 3.4, dur: 400, with: true });
+        write('PRIMARY KEY', N.x + 26, N.y + 62, { in: g, font: 'marker', size: 44, color: C.blue });
+        write('= who I am', N.x + 26, N.y + 104, { in: g, size: 34 });
+        write('FOREIGN KEY', N.x + 26, N.y + 164, { in: g, font: 'marker', size: 44, color: C.red, gap: 120 });
+        write('= who I point to', N.x + 26, N.y + 206, { in: g, size: 34 });
+        caption(st, ["Two keys. That's all a relationship needs."], { gap: 100 });
+      },
+    ],
+  },
+
+  /* One to many --------------------------------------------------------- */
+  {
+    title: 'One to many / many to one',
+    steps: [
+      st => { heading('One to many / many to one'); drawManager(st, { gap: 100 }); },
+      st => drawEmployees(st),
+      st => {
+        drawHeads(st, false);
+        caption(st, [[{ t: 'One', c: C.green, b: true }, ' manager has ', { t: 'many', c: C.blue, b: true }, ' employees.']], { gap: 150 });
+      },
+      st => {
+        st.heads.forEach((h, i) => play(h, [{ transform: headPose(i, false) }, { transform: headPose(i, true) }],
+          850, { t: (100 + i * 110) * SPEED, ease: EASE.inOut }));
+        caption(st, [
+          [{ t: 'Many', c: C.blue, b: true }, ' employees have ', { t: 'one', c: C.green, b: true }, ' manager.'],
+          'Same lines, read the other way.',
+        ], { gap: 200 });
+      },
+      st => ask(st, 0, 'One manager, many employees?'),
+      st => answer(st, 0, true),
+      st => ask(st, 1, 'One employee, many managers?'),
+      st => answer(st, 1, false),
+      st => stamp('ONE TO MANY', 700, 300),
+    ],
+  },
+
+  /* One to one ---------------------------------------------------------- */
+  {
+    title: 'One to one',
+    steps: [
+      st => {
+        heading('One to one');
+        st.p = person(430, 430, 'Meera', { color: C.blue, scale: 1.2, gap: 100 });
+        st.card = idCard(1000, 480, 'Meera', 'XXXX XXXX 4821', { gap: 150 });
+      },
+      st => {
+        drawStrokes([lineD(505, 475, 830, 480, { bow: 0.02 })], { w: 4.5, dur: 550 });
+        write('has', 668, 458, { anchor: 'middle', size: 38, weight: 700, color: C.red });
+      },
+      st => {
+        // a second card slides in and tries to connect
+        const c2 = idCard(1300, 170, 'Meera', 'XXXX XXXX 7310', { instant: true });
+        c2.style.transformOrigin = '1300px 170px';
+        play(c2, [{ transform: trr(470, -50, 12) }, { transform: trr(0, 0, 0) }], 620, { ease: EASE.land });
+        const ln = drawStrokes([lineD(506, 432, 1128, 190, { bow: 0.02 })], { w: 4.5, dur: 620, gap: 120 });
+        // nope: line goes red and shakes
+        play(ln._paths[0], [{ stroke: C.ink }, { stroke: C.red }], 160, { gap: 40 });
+        wobble(ln, 420, { with: true });
+        play(c2, [
+          { transform: trr(0, 0, 0) }, { transform: trr(-6, 0, -2) },
+          { transform: trr(5, 0, 2) }, { transform: trr(0, 0, 0) },
+        ], 420, { with: true });
+        // and the card bounces off
+        play(c2, [{ transform: trr(0, 0, 0) }, { transform: trr(72, -8, 11) }], 520, { gap: 40, ease: EASE.bounce });
+        undraw(ln, 320, { with: true, offset: 40 });
+        drawStrokes([
+          lineD(1300 - 118, 170 - 66, 1300 + 118, 170 + 66, { bow: 0.03 }),
+          lineD(1300 + 118, 170 - 66, 1300 - 118, 170 + 66, { bow: 0.03 }),
+        ], { in: c2, color: C.red, w: 7, dur: 420, gap: 120 });
+        caption(st, [['One person, one card. ', { t: 'Never two.', c: C.red, b: true }]], { gap: 150 });
+      },
+      st => ask(st, 0, 'One person, many cards?'),
+      st => answer(st, 0, false),
+      st => ask(st, 1, 'One card, many people?'),
+      st => answer(st, 1, false),
+      st => stamp('ONE TO ONE', 760, 240, { rot: -6 }),
+    ],
+  },
+
+  /* Many to many --------------------------------------------------------- */
+  {
+    title: 'Many to many',
+    steps: [
+      st => {
+        heading('Many to many');
+        stagger(STUDENTS, 220, s => person(SX, s.y, s.name, { color: C.blue, scale: 0.82, label: 'left' }), { gap: 100 });
+        stagger(TEACHERS, 220, t => person(TX, t.y, t.name, { color: C.green, scale: 0.9, label: 'right', sub: 'teacher' }), { t: 400 * SPEED });
+      },
+      st => {
+        st.direct = mk('g');
+        stagger(ENROL, 300, (e, r) => {
+          const [x1, y1] = sPt(r), [x2, y2] = tPt(r);
+          drawStrokes([lineD(x1, y1, x2, y2, { bow: 0.035 })], { in: st.direct, w: 3.6, dur: 500 });
+        });
+      },
+      st => {
+        st.huh = write('?', 800, 470, { font: 'marker', size: 150, color: C.red, anchor: 'middle', dur: 200 });
+        caption(st, ['Where do we write this down?', "Not on the student's card, not on the teacher's card."]);
+      },
+      st => {
+        fadeOut(st.huh, 200, { t: 0 });
+        const reg = drawRegister();
+        reg.style.transformOrigin = '800px 424px';
+        play(reg, [
+          { transform: trr(0, -820, -6), offset: 0 },
+          { transform: trr(0, 14, 1.5), offset: 0.72 },
+          { transform: trr(0, -4, -0.5), offset: 0.88 },
+          { transform: trr(0, 0, 0), offset: 1 },
+        ], 820, { t: 100 * SPEED, ease: 'cubic-bezier(.45,0,.6,1)' });
+        fadeOut(st.direct, 380, { gap: 60 });
+        stagger(ENROL, 260, ([i, j], r) => {
+          const ry = REG.row0 + r * REG.rowH;
+          const [sx, sy] = sPt(r), [tx, ty] = tPt(r);
+          drawStrokes([lineD(sx, sy, REG.x + 4, ry - 10, { bow: 0.01 })], { w: 3.4, dur: 320 });
+          write(`${STUDENTS[i].name} - ${TEACHERS[j].name}`, 800, ry, { size: 30, anchor: 'middle', dur: 300 });
+          drawStrokes([lineD(REG.x + REG.w - 4, ry - 10, tx, ty, { bow: 0.01 })], { w: 3.4, dur: 320 });
+        }, { with: true, offset: 120 });
+        caption(st, [['The register in the middle is the ', { t: 'junction table', c: C.red, b: true, u: true }, '.']], { gap: 250 });
+      },
+      st => ask(st, 0, 'One student, many teachers?'),
+      st => answer(st, 0, true),
+      st => ask(st, 1, 'One teacher, many students?'),
+      st => answer(st, 1, true),
+      st => stamp('MANY TO MANY', 1290, 104, { rot: -5, size: 72 }),
+    ],
+  },
+
+  /* From people to tables ----------------------------------------------- */
+  {
+    title: 'From people to tables',
+    steps: [
+      st => {
+        heading('From people to tables');
+        drawManager(st, { gap: 80, fast: true });
+        drawEmployees(st, { gap: 170, fast: true });
+        drawHeads(st, true, { gap: 40 });
+        caption(st, ["Back to Hiren's team. Now let's actually write it down."], { gap: 100 });
+      },
+      st => {
+        clearCaption(st);
+        st.links.forEach(l => fadeTo(l, 1, 0.22, 300, { t: 0 }));
+        st.heads.forEach(h => fadeTo(h, 1, 0.22, 300, { t: 0 }));
+        const items = [
+          { p: st.mgr, card: { cx: 300, cy: 430, w: 262, h: 116 }, name: 'Hiren', id: '1', big: true },
+          ...TEAM.emps.map((e, i) => ({ p: st.emps[i], card: { cx: e.x + 48, cy: e.y + 28, w: 236, h: 88 }, name: e.name, id: String(e.id) })),
+        ];
+        st.cards = stagger(items, 140, it => morphToCard(it), { gap: 120 });
+        caption(st, ['Each person becomes an ID card.'], { gap: 150 });
+      },
+      st => {
+        clearCaption(st);
+        st.links.forEach(l => fadeTo(l, 0.22, 0, 250, { t: 0 }));
+        st.heads.forEach(h => fadeTo(h, 0.22, 0, 250, { t: 0 }));
+        stagger(st.cards, 130, (c, i) => slideIntoRow(c, i === 0 ? MT : ET, i === 0 ? 0 : i - 1), { gap: 100 });
+        st.mt = table(MT, ['id', 'name'], 1, 'managers', { gap: -200 });
+        st.et = table(ET, ['id', 'name'], 5, 'employees', { with: true, offset: 150 });
+        caption(st, [['Each card becomes a ', { t: 'row', c: C.blue, b: true }, ' in a table.']], { gap: 100 });
+      },
+      st => {
+        clearCaption(st);
+        [st.mt, st.et].forEach((tb, i) => write('PK', tb.xs[1] - 6, tb.d.y + 40,
+          { font: 'marker', size: 30, color: C.blue, anchor: 'end', with: i === 1 }));
+        const ids = [[st.mt, 0, 30], ...[0, 1, 2, 3, 4].map(r => [st.et, r, 44])];
+        stagger(ids, 120, ([tb, r, rx]) => drawStrokes([ellipseD((tb.xs[0] + tb.xs[1]) / 2, tb.rows[r] + 1, rx, 24)],
+          { color: C.blue, w: 3.5, dur: 320 }), { gap: 100 });
+        caption(st, [
+          "Same idea as before: the id column is each person's identity.",
+          ["That's the ", { t: 'PRIMARY KEY', c: C.blue, b: true, u: true }, '.'],
+        ], { gap: 150 });
+      },
+      st => {
+        clearCaption(st);
+        const ex = st.et.right, nx = ex + 280, top = ET.y, hb = ET.y + ET.head, bot = st.et.bottom, mid = (ex + nx) / 2;
+        const ds = [lineD(ex, top, nx, top), lineD(ex, hb, nx, hb)];
+        for (let r = 1; r < 5; r++) ds.push(lineD(ex, hb + ET.row * r, nx, hb + ET.row * r, { bow: 0.004 }));
+        ds.push(lineD(ex, bot, nx, bot), lineD(nx, top, nx, bot, { bow: 0.004 }));
+        drawStrokes(ds, { w: 3.6, dur: 600 });
+        write('manager_id', mid, ET.y + 38, { anchor: 'middle', size: 28, weight: 700, color: C.red });
+        write('FK', nx - 6, ET.y + 40, { font: 'marker', size: 30, color: C.red, anchor: 'end', with: true, offset: 200 });
+        stagger(st.et.rows, 140, cy => write('1', mid, cy + 10, { anchor: 'middle', size: 30, weight: 700, color: C.red }), { gap: 40 });
+        // arrow from manager_id back to Hiren's id
+        const hx = (MT.x * 2 + MT.cols[0]) / 2, hy = st.mt.bottom + 12;
+        const arr = drawStrokes([curveD(mid, bot + 8, mid, bot + 96, hx, bot + 96, hx, hy)], { color: C.red, w: 4.5, dur: 900, gap: 150 });
+        drawStrokes([headD(hx, hy, -Math.PI / 2, 22)], { in: arr, color: C.red, w: 4.5, dur: 160 });
+        write("points to Hiren's id", 232, 482, { size: 30, weight: 700, color: C.red, with: true, offset: 100 });
+        caption(st, [
+          "Each employee writes down Hiren's id.",
+          ["That's the ", { t: 'FOREIGN KEY', c: C.red, b: true, u: true }, ' again.'],
+        ], { gap: 150 });
+      },
+      st => {
+        clearCaption(st);
+        write("What if Hiren's row held the whole list?", 90, 186, { font: 'marker', size: 40, color: C.blue });
+        const x0 = st.mt.right, x1 = x0 + 140, top = MT.y, hb = MT.y + MT.head, bot = st.mt.bottom;
+        const cell = mk('g');
+        cell.style.transformBox = 'fill-box'; cell.style.transformOrigin = 'center';
+        drawStrokes([lineD(x0, top, x1, top), lineD(x0, hb, x1, hb), lineD(x0, bot, x1, bot), lineD(x1, top, x1, bot)],
+          { in: cell, w: 3.6, dur: 380, gap: 100 });
+        write('employee_ids', x0 + 8, top + 36, { in: cell, size: 22, weight: 700, color: C.blue });
+        const tilt = [0, 1.5, -2.5, 4, -6];
+        const ids = TEAM.emps.map((e, i) => {
+          const t = write(`${e.id}${i < 4 ? ',' : ''}`, x0 + 10 + i * 58, bot - 28, { size: 30, weight: 700, color: C.blue, gap: i ? 140 : 60 });
+          t.style.transformBox = 'fill-box'; t.style.transformOrigin = 'center';
+          t.style.transform = trr(0, 0, tilt[i]);
+          return t;
+        });
+        // it wobbles...
+        play(cell, [0, -3, 3, -2, 0].map(a => ({ transform: trr(0, 0, a) })), 420, { gap: 150 });
+        // ...and falls apart
+        const t0 = T.now + 60 * SPEED;
+        ids.forEach((t, i) => play(t, [
+          { transform: trr(0, 0, tilt[i]), opacity: 1 },
+          { transform: trr(jit(60), 470, rand(-130, 130)), opacity: 0 },
+        ], 950, { t: t0 + i * 70 * SPEED, ease: EASE.fall }));
+        play(cell, [
+          { transform: trr(0, 0, 0), opacity: 1 },
+          { transform: trr(30, 480, -38), opacity: 0 },
+        ], 1000, { t: t0 + 120 * SPEED, ease: EASE.fall });
+        write("doesn't fit!", x0 + 6, 374, { font: 'marker', size: 46, color: C.red, rotate: -6, gap: -350 });
+        caption(st, [["That's why the foreign key goes on the ", { t: 'MANY', c: C.red, b: true, u: true }, ' side.']], { gap: 150 });
+      },
+    ],
+  },
+
+  /* Self-reference ------------------------------------------------------ */
+  {
+    title: 'Self-reference',
+    steps: [
+      st => {
+        heading('Self-reference');
+        person(300, 400, 'Hiren', { color: C.green, sub: 'manager', scale: 0.8, label: 'right', gap: 100 });
+        person(170, 600, 'Neha', { color: C.blue, scale: 0.8, label: 'right', gap: 60 });
+        person(430, 600, 'Arjun', { color: C.blue, scale: 0.8, label: 'right', with: true, offset: 220 });
+        arrow(188, 566, 282, 492, { w: 4, dur: 380, size: 18, gap: 60 });
+        arrow(414, 566, 320, 492, { w: 4, dur: 380, size: 18, with: true, offset: 120 });
+        caption(st, ['Hiren manages Neha and Arjun. We know this one.'], { gap: 100 });
+      },
+      st => {
+        person(300, 190, 'Anita', { color: C.green, sub: 'CEO', scale: 0.8, label: 'right' });
+        arrow(300, 366, 300, 284, { w: 4, dur: 320, size: 18, gap: 40 });
+        caption(st, ['But Hiren has a manager too.', ['So Hiren is an employee ', { t: 'and', b: true }, ' a manager.']], { gap: 100 });
+      },
+      st => {
+        // one table per level? it gets silly fast
+        st.pile = mk('g');
+        const levels = [['managers', 'Hiren'], ['employees', 'Hiren'], ['senior_managers', ''], ['ceos', 'Anita']];
+        stagger(levels, 300, ([nm, who], i) => block({}, () => {
+          const x = 840 + i * 40, y = 230 + i * 56, w = 340, h = 200;
+          const g = mk('g', {}, st.pile);
+          fadeIn(mk('rect', { x, y, width: w, height: h, rx: 6, fill: C.paper }, g), 160);
+          drawStrokes([...rectDs(x, y, w, h, { over: 3 }), lineD(x, y + 48, x + w, y + 48)], { in: g, w: 3.4, dur: 360, with: true });
+          write(nm, x + 16, y + 34, { in: g, size: 28, weight: 700, color: C.blue, dur: 200 });
+          if (who) write(who, x + w - 16, y + 34, { in: g, size: 28, weight: 700, color: C.red, anchor: 'end', dur: 160 });
+        }), { gap: 80 });
+        drawStrokes([lineD(830, 226, 1330, 640, { bow: 0.03 }), lineD(1330, 226, 830, 640, { bow: 0.03 })],
+          { in: st.pile, color: C.red, w: 8, dur: 520, gap: 250 });
+        caption(st, ['A new table for every level? Hiren would be in two of them.', 'And Anita gets a whole table to herself. No thanks.'], { gap: 100 });
+      },
+      st => {
+        fadeOut(st.pile, 300, { t: 0 });
+        st.tb = table(SRT, ['id', 'manager_id', 'name'], 4, 'employees', { gap: 100 });
+        const ppl = [['Anita', 1], ['Hiren', 2], ['Neha', 3], ['Arjun', 4]];
+        stagger(ppl, 200, ([nm, id], r) => cells(st.tb, r, [id, null, nm], { size: 30 }), { gap: 60 });
+        // little id tags next to the people on the left
+        const at = [[352, 250], [352, 460], [222, 640], [482, 640]];
+        stagger(at, 200, ([x, y], i) => write(`id ${i + 1}`, x, y, { size: 26, weight: 700, color: C.blue, dur: 160 }), { with: true });
+        caption(st, ['One employees table. Bosses are employees too.'], { gap: 100 });
+      },
+      st => {
+        const tb = st.tb, c1 = (tb.xs[0] + tb.xs[1]) / 2, c2 = (tb.xs[1] + tb.xs[2]) / 2;
+        write('PK', tb.xs[1] - 6, SRT.y + 40, { font: 'marker', size: 30, color: C.blue, anchor: 'end' });
+        write('FK', tb.xs[2] - 6, SRT.y + 40, { font: 'marker', size: 30, color: C.red, anchor: 'end', with: true, offset: 120 });
+        // each manager_id points at an id in the same table
+        stagger([[1, 0, 2, '1'], [2, 1, -6, '2'], [3, 1, 12, '2']], 480, ([s, d, off, v]) => {
+          write(v, c2, tb.rows[s] + 11, { anchor: 'middle', size: 30, weight: 700, color: C.red, dur: 120 });
+          arrow(c2 - 22, tb.rows[s] - 4, c1 + 24, tb.rows[d] + 4 + off, { color: C.red, w: 3.6, size: 16, bow: 0.04, dur: 360 });
+        }, { gap: 100 });
+        caption(st, [
+          'manager_id points back into the same table.',
+          ['A table pointing at itself: ', { t: 'SELF-REFERENCE', c: C.red, b: true, u: true }, '.'],
+        ], { gap: 100 });
+      },
+      st => {
+        const tb = st.tb, c2 = (tb.xs[1] + tb.xs[2]) / 2;
+        write('NULL', c2, tb.rows[0] + 11, { anchor: 'middle', size: 30, weight: 700, color: C.grey });
+        drawStrokes([ellipseD(c2, tb.rows[0], 56, 24)], { color: C.grey, w: 3, dur: 300 });
+        caption(st, [
+          'Anita has no manager, so her manager_id is empty.',
+          ['Empty is called ', { t: 'NULL', c: C.grey, b: true }, '. This foreign key is allowed to be empty.'],
+        ], { gap: 100 });
+      },
+      st => {
+        stamp('ONE TO MANY', 1200, 128, { rot: -5, size: 64 });
+        caption(st, ['One employee manages many. Each has one manager.', 'Still one to many. Both ends are just the same table.'], { gap: 200 });
+      },
+    ],
+  },
+
+  /* Where does the foreign key go? -------------------------------------- */
+  {
+    title: 'Where does the foreign key go?',
+    steps: [
+      st => {
+        heading('Where does the foreign key go?');
+        drawStrokes([lineD(800, 150, 800, 720, { bow: 0.01 })], { color: C.faint, w: 3, dur: 400, gap: 60 });
+        caption(st, [
+          ['One to many: on the ', { t: 'many', c: C.red, b: true }, ' side. We just did that.'],
+          'So where does it go for the other two?',
+        ], { gap: 100 });
+      },
+      st => {
+        write('ONE TO ONE', 365, 172, { font: 'marker', size: 50, color: C.green, anchor: 'middle' });
+        st.peo = table(PEO, ['id', 'name'], 2, 'people', { ...MINI, nameAt: [556, 308] });
+        stagger([[7, 'Meera'], [8, 'Dev']], 160, (v, r) => cells(st.peo, r, v, { size: 28 }));
+        st.crd = table(CRD, ['person_id', 'number'], 2, 'aadhaar_cards', { ...MINI, nameAt: [556, 548], gap: 100 });
+        stagger([[{ t: '7', c: C.red }, '4821'], [{ t: '8', c: C.red }, '5530']], 160, (v, r) => cells(st.crd, r, v, { size: 28 }));
+        arrow(268, 470, 268, 416, { color: C.red, w: 4.5, size: 18, dur: 280, gap: 100 });
+        write('points to', 290, 451, { size: 26, weight: 700, color: C.red, with: true, offset: 120 });
+        caption(st, ["The card writes down its owner's id.", ['person_id is the ', { t: 'foreign key', c: C.red, b: true }, '.']], { gap: 100 });
+      },
+      st => {
+        write('UNIQUE', 178, 512, { font: 'marker', size: 34, color: C.red, anchor: 'end' });
+        drawStrokes([ellipseD(268, 500, 66, 21)], { color: C.red, w: 3.4, dur: 320, with: true, offset: 100 });
+        rejectRow(st.crd, [{ t: '7', c: C.red }, '7310'], { size: 28, bounce: [230, 14, 8], gap: 150 });
+        caption(st, [
+          ['Add ', { t: 'UNIQUE', c: C.red, b: true }, ' and each person id can appear only once.'],
+          "Meera's second card bounces off. One to one.",
+        ], { gap: 100 });
+      },
+      st => {
+        write('MANY TO MANY', 1195, 168, { font: 'marker', size: 50, color: C.red, anchor: 'middle' });
+        st.stu = table(STU, ['id', 'name'], 2, 'students', MINI);
+        stagger([[1, 'Asha'], [2, 'Rohan']], 160, (v, r) => cells(st.stu, r, v, { size: 28 }));
+        st.tea = table(TEA, ['id', 'subject'], 2, 'teachers', { ...MINI, gap: 60 });
+        stagger([[10, 'Maths'], [20, 'Science']], 160, (v, r) => cells(st.tea, r, v, { size: 28 }));
+        caption(st, ["Asha's row can't hold many teacher ids.", "Maths' row can't hold many student ids either."], { gap: 100 });
+      },
+      st => {
+        st.enr = table(ENR, ['student_id', 'teacher_id'], 3, 'enrolments', { ...MINI, nameAt: [1362, 532] });
+        write('(the register)', 1362, 564, { size: 26, color: C.grey, with: true, offset: 300 });
+        stagger([[1, 10], [1, 20], [2, 10]], 160, (v, r) => cells(st.enr, r, v.map(n => ({ t: String(n), c: C.red })), { size: 28 }));
+        arrow(1121, 470, 892, 416, { color: C.red, w: 4.5, size: 18, dur: 360, gap: 100 });
+        arrow(1271, 470, 1352, 416, { color: C.red, w: 4.5, size: 18, dur: 300, gap: 60 });
+        caption(st, [
+          'The register becomes its own table with two foreign keys.',
+          ["That's the ", { t: 'junction table', c: C.red, b: true, u: true }, '.'],
+        ], { gap: 100 });
+      },
+      st => {
+        drawStrokes([ellipseD(1196, 498, 166, 25)], { color: C.blue, w: 3.6, dur: 380 });
+        write('PK', 1016, 510, { font: 'marker', size: 40, color: C.blue, anchor: 'end', with: true, offset: 200 });
+        write('(both together)', 1016, 542, { size: 24, color: C.grey, anchor: 'end' });
+        rejectRow(st.enr, [{ t: '1', c: C.red }, { t: '10', c: C.red }], { size: 28, bounce: [200, 22, 6], gap: 150 });
+        caption(st, ['Together, the pair is the primary key.', "So Asha can't join Maths twice."], { gap: 100 });
+      },
+    ],
+  },
+
+  /* The two-question trick ---------------------------------------------- */
+  {
+    title: 'The two-question trick',
+    steps: [
+      st => {
+        heading('The two-question trick');
+        write([{ t: 'Q1  ', c: C.red, b: true }, 'Can one ', { t: 'A', c: C.blue, b: true }, ' have many ', { t: 'B', c: C.green, b: true }, '?'],
+          230, 196, { size: 44, gap: 150 });
+        write([{ t: 'Q2  ', c: C.red, b: true }, 'Can one ', { t: 'B', c: C.green, b: true }, ' have many ', { t: 'A', c: C.blue, b: true }, '?'],
+          230, 254, { size: 44, gap: 120 });
+      },
+      st => {
+        drawStrokes([
+          lineD(G.x1, G.y0, G.x3, G.y0), lineD(G.x0, G.y1, G.x3, G.y1),
+          lineD(G.x0, G.y2, G.x3, G.y2), lineD(G.x0, G.y3, G.x3, G.y3),
+          lineD(G.x0, G.y1, G.x0, G.y3), lineD(G.x1, G.y0, G.x1, G.y3),
+          lineD(G.x2, G.y0, G.x2, G.y3), lineD(G.x3, G.y0, G.x3, G.y3),
+        ], { w: 4, dur: 1100 });
+        write([{ t: 'Q2: ' }, { t: 'YES', c: C.green }], (G.x1 + G.x2) / 2, G.y1 - 17, { anchor: 'middle', size: 34, weight: 700 });
+        write([{ t: 'Q2: ' }, { t: 'NO', c: C.red }], (G.x2 + G.x3) / 2, G.y1 - 17, { anchor: 'middle', size: 34, weight: 700, with: true, offset: 120 });
+        write([{ t: 'Q1: ' }, { t: 'YES', c: C.green }], (G.x0 + G.x1) / 2, (G.y1 + G.y2) / 2 + 12, { anchor: 'middle', size: 34, weight: 700, with: true, offset: 120 });
+        write([{ t: 'Q1: ' }, { t: 'NO', c: C.red }], (G.x0 + G.x1) / 2, (G.y2 + G.y3) / 2 + 12, { anchor: 'middle', size: 34, weight: 700, with: true, offset: 120 });
+      },
+      st => fillCell(0, 1, 'ONE TO MANY', C.blue, 'foreign key on the many side', { a: 1, b: 3 }),
+      st => fillCell(1, 1, 'ONE TO ONE', C.green, 'foreign key + UNIQUE', { a: 1, b: 1 }),
+      st => fillCell(0, 0, 'MANY TO MANY', C.red, 'junction table, two foreign keys', { a: 3, b: 3, j: true }),
+      st => fillCell(1, 0, 'MANY TO ONE', C.blue, 'one to many, read backwards', { a: 3, b: 1 }),
+      st => {
+        const { els } = caption(st, [["Now let's do it in SQL with ", { t: 'customers', c: C.blue, b: true }, ' and ', { t: 'orders', c: C.green, b: true }, '.']], { size: 48 });
+        const t = els[0], end = t.getEndPositionOfChar(t._spans.length - 1).x;
+        arrow(end + 24, 802, end + 130, 802, { w: 5, dur: 380, bow: 0.04, gap: 80 });
+      },
+    ],
+  },
+];
+
+/* =====================================================================
+   Engine: render, navigation, keys (no on-screen controls)
+   ===================================================================== */
+let cur = { s: 0, k: 0 };
+const srEl = document.getElementById('sr');
+
+function render(s, k, animate) {
+  cur = { s, k };
+  if (shakeG.getAnimations) shakeG.getAnimations().forEach(a => a.cancel());
+  layer.replaceChildren();
+  rng = mulberry32(7919 * (s + 1));
+  sceneNo = s;
+  const steps = SCENES[s].steps, st = {};
+  for (let i = 0; i <= k; i++) {
+    S.animate = animate && i === k && !motionOff;
+    T = { now: 0, last: 0, max: 0 };
+    steps[i](st);
+  }
+  S.animate = false;
+  srEl.textContent = s === 0
+    ? SCENES[0].title
+    : `Scene ${s} of ${SCENES.length - 1}: ${SCENES[s].title}. Step ${k + 1} of ${steps.length}.`;
+}
+
+function next() {
+  const n = SCENES[cur.s].steps.length;
+  if (cur.k < n - 1) render(cur.s, cur.k + 1, true);
+  else if (cur.s < SCENES.length - 1) render(cur.s + 1, 0, true);
+}
+function prev() {
+  if (cur.k > 0) render(cur.s, cur.k - 1, false);
+  else if (cur.s > 0) render(cur.s - 1, SCENES[cur.s - 1].steps.length - 1, false);
+}
+
+function toggleFull() {
+  if (document.fullscreenElement) document.exitFullscreen();
+  else if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(() => {});
+}
+
+function onKey(e) {
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const k = e.key;
+  if (k === ' ' || k === 'ArrowRight' || k === 'PageDown' || k === 'Enter') {
+    e.preventDefault(); if (!e.repeat) next();
+  } else if (k === 'ArrowLeft' || k === 'PageUp' || k === 'Backspace') {
+    e.preventDefault(); if (!e.repeat) prev();
+  } else if (k === 'r' || k === 'R') {
+    render(cur.s, 0, true);
+  } else if (/^[0-9]$/.test(k)) {
+    const s = k === '0' ? 10 : +k;
+    if (s < SCENES.length) render(s, 0, true);
+  } else if (k === 'Home') {
+    e.preventDefault(); render(0, 0, true);
+  } else if (k === 'End') {
+    e.preventDefault(); render(SCENES.length - 1, 0, true);
+  } else if (k === 'f' || k === 'F') {
+    toggleFull();
+  }
+}
+
+// Hide the mouse pointer when it sits still, so it never sits on the board.
+let idleTimer = 0;
+function wake() {
+  document.body.classList.remove('idle');
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(() => document.body.classList.add('idle'), 1800);
+}
+addEventListener('mousemove', wake);
+wake();
+
+// Wait for the handwriting fonts so text measurements are right.
+const loads = Promise.all(['400 40px Kalam', '700 40px Kalam', '700 40px Caveat'].map(x => document.fonts.load(x)))
+  .then(() => true, () => false);
+const timeout = new Promise(r => setTimeout(() => r('timeout'), 2500));
+Promise.race([loads, timeout]).then(res => {
+  addEventListener('keydown', onKey);
+  render(0, 0, true);
+  // fonts were slow: redraw the current step once they arrive
+  if (res === 'timeout') loads.then(ok => { if (ok) render(cur.s, cur.k, false); });
+});
+
+// Handy for testing from the console: wb.go(scene, step)
+window.wb = { go: (s, k = 0, a = false) => render(s, k, a), scenes: SCENES };
+})();
+</script>
+</body>
+</html>
