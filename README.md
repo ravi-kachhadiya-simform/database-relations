@@ -1,4 +1,4 @@
-# Database Relationships 101
+# Database Relations
 
 A 30 minute micro session that teaches database relationships to frontend developers. No SQL or backend background needed. If you know React and JavaScript, you're good.
 
