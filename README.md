@@ -13,8 +13,9 @@ No download needed. Just open the link in your browser. If you'd rather run it o
 | **Story** (start here) | The main walkthrough used in the session | [Open the story](https://ravi-kachhadiya-simform.github.io/database-relations/db-relations-story.html) |
 | **Playground** | Try the relationships yourself and see the SQL change | [Open the playground](https://ravi-kachhadiya-simform.github.io/database-relations/db-relations-playground.html) |
 | **Game** | Quick quiz to check what stuck | [Play the game](https://ravi-kachhadiya-simform.github.io/database-relations/db-relations-game.html) |
+| **Whiteboard** | Whiteboard Presentation | [Open the Whiteboard Presentation](https://ravi-kachhadiya-simform.github.io/database-relations/db-relations-whiteboard.html) |
 
-Suggested order: Story → Playground → Game.
+Suggested order: Story/Whiteboard → Playground → Game.
 
 ## What you'll learn
 
