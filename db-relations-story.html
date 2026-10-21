@@ -1,0 +1,2391 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Database Relations: Story</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ---------- Tokens ---------- */
+:root {
+  --bg: #0f1117;
+  --surface: #171a23;
+  --surface-2: #1d212c;
+  --surface-3: #262b38;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-2: rgba(255, 255, 255, 0.15);
+  --text: #eef0f5;
+  --text-2: #c7ccd8;
+  --muted: #949db0;
+  --brand: #ff6b47;
+  --on-brand: #1b0c07;
+  --brand-soft: rgba(255, 107, 71, 0.14);
+  --good: #4ade80;
+  --bad: #ff5d73;
+  --warn: #fbbf24;
+  --c-customers: #5b9bff;
+  --c-orders: #ff9a3c;
+  --c-loyalty_cards: #f5cb4c;
+  --c-products: #5fd27a;
+  --c-order_items: #b48cff;
+  --c-neutral: #9aa6bd;
+  --team-a: #ffd166;
+  --team-b: #ff7a59;
+  --kw: #ffffff;
+  --str: #f9a8d4;
+  --num: #fcd9b6;
+  --com: #737d94;
+  --link: #8fb8ff;
+  --shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 14px 34px -16px rgba(0, 0, 0, 0.7);
+  --radius: 14px;
+  --f-head: 'Space Grotesk', 'Avenir Next', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --f-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --f-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+  color-scheme: dark;
+}
+:root[data-theme="light"] {
+  --bg: #eef1f6;
+  --surface: #ffffff;
+  --surface-2: #f6f7fa;
+  --surface-3: #e7ebf2;
+  --border: rgba(16, 22, 38, 0.10);
+  --border-2: rgba(16, 22, 38, 0.20);
+  --text: #121620;
+  --text-2: #2c3446;
+  --muted: #586174;
+  --brand: #e2451f;
+  --on-brand: #ffffff;
+  --brand-soft: rgba(226, 69, 31, 0.10);
+  --good: #12803a;
+  --bad: #d1213d;
+  --warn: #a95207;
+  --c-customers: #2160e8;
+  --c-orders: #cf5f06;
+  --c-loyalty_cards: #9a6f00;
+  --c-products: #1b8539;
+  --c-order_items: #7444d8;
+  --c-neutral: #5d6880;
+  --team-a: #a87800;
+  --team-b: #e2451f;
+  --kw: #0b0e15;
+  --str: #b4135a;
+  --num: #9a4a06;
+  --com: #7a8295;
+  --link: #1f5fd6;
+  --shadow: 0 1px 2px rgba(16, 22, 38, 0.06), 0 10px 26px -14px rgba(16, 22, 38, 0.22);
+  color-scheme: light;
+}
+
+/* ---------- Base + stage ---------- */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); }
+body { font-family: var(--f-body); color: var(--text); -webkit-font-smoothing: antialiased; }
+button { font: inherit; color: inherit; }
+a { color: inherit; }
+[hidden] { display: none !important; }
+#host { position: fixed; inset: 0; overflow: hidden; background: var(--bg); }
+#stage {
+  position: absolute; left: 50%; top: 50%;
+  width: 1600px; height: 900px;
+  transform: translate(-50%, -50%) scale(var(--s, 1));
+  transform-origin: center center;
+  background: var(--bg);
+  font-size: 24px; line-height: 1.4;
+  overflow: hidden;
+}
+.c-customers { color: var(--c-customers); --cc: var(--c-customers); }
+.c-orders { color: var(--c-orders); --cc: var(--c-orders); }
+.c-loyalty_cards { color: var(--c-loyalty_cards); --cc: var(--c-loyalty_cards); }
+.c-products { color: var(--c-products); --cc: var(--c-products); }
+.c-order_items { color: var(--c-order_items); --cc: var(--c-order_items); }
+.t-customers { --tc: var(--c-customers); }
+.t-orders { --tc: var(--c-orders); }
+.t-loyalty_cards { --tc: var(--c-loyalty_cards); }
+.t-products { --tc: var(--c-products); }
+.t-order_items { --tc: var(--c-order_items); }
+.ico { width: 0.85em; height: 0.85em; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; border-radius: 8px; }
+kbd {
+  font: 600 15px var(--f-mono); padding: 2px 7px; border-radius: 6px;
+  border: 1px solid var(--border-2); background: var(--surface-2); color: var(--text-2);
+}
+code.inl { font: 600 0.86em var(--f-mono); padding: 1px 6px; border-radius: 6px; background: var(--surface-3); color: var(--text); white-space: nowrap; }
+
+/* ---------- Buttons ---------- */
+.btn {
+  font: 600 21px/1.2 var(--f-body);
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 12px 20px; border-radius: 12px;
+  border: 1px solid var(--border-2); background: var(--surface-2); color: var(--text);
+  cursor: pointer; white-space: nowrap; text-decoration: none;
+  transition: background .2s, border-color .2s, transform .12s, opacity .2s;
+}
+.btn:hover { background: var(--surface-3); }
+.btn:active { transform: translateY(1px); }
+.btn:disabled { opacity: .45; cursor: default; }
+.btn.primary { background: var(--brand); color: var(--on-brand); border-color: transparent; }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn.primary:disabled { background: var(--surface-2); color: var(--muted); border-color: var(--border); filter: none; }
+.btn.ghost { background: transparent; }
+.btn.small { font-size: 18px; padding: 8px 14px; border-radius: 10px; }
+.btn.big { font-size: 26px; padding: 16px 30px; border-radius: 14px; }
+.btn[aria-pressed="true"] { border-color: var(--brand); background: var(--brand-soft); }
+.btn.done { border-color: color-mix(in srgb, var(--good) 55%, transparent); }
+.icon-btn {
+  width: 46px; height: 46px; display: grid; place-items: center;
+  border-radius: 12px; border: 1px solid var(--border); background: var(--surface);
+  color: var(--text-2); cursor: pointer; font: 700 20px var(--f-head);
+  transition: background .2s, color .2s;
+}
+.icon-btn:hover { background: var(--surface-3); color: var(--text); }
+.icon-btn svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ---------- Clickable questions: the question itself reveals the answer ---------- */
+.ask {
+  appearance: none; border: 0; background: none; padding: 0; margin: 0; text-align: left;
+  font: 700 30px/1.25 var(--f-head); letter-spacing: -0.01em; color: var(--text);
+  cursor: pointer;
+  text-decoration: underline; text-decoration-color: var(--brand);
+  text-decoration-thickness: 3px; text-underline-offset: 7px;
+  transition: color .2s, text-decoration-color .2s;
+}
+.ask:hover { color: var(--brand); }
+.ask.small { font-size: 24px; text-decoration-thickness: 2px; text-underline-offset: 6px; }
+.ask.big { font-size: 40px; text-underline-offset: 9px; }
+.ask:disabled, .ask.is-open { cursor: default; color: var(--text); text-decoration-color: color-mix(in srgb, var(--brand) 35%, transparent); }
+.reveal { margin-top: 10px; }
+.reveal:not(.shown) { display: none !important; }
+.reveal.shown { animation: popIn .3s ease both; }
+
+/* ---------- Top bar ---------- */
+.topbar {
+  position: absolute; top: 0; left: 0; right: 0; height: 72px;
+  display: flex; align-items: center; gap: 16px; padding: 0 24px;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 55%, var(--bg));
+  z-index: 20;
+}
+.brand { display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1; }
+.brand-logo {
+  width: 42px; height: 42px; border-radius: 12px; background: var(--brand);
+  display: grid; place-items: center; flex: none; color: var(--on-brand);
+  box-shadow: 0 6px 18px -6px var(--brand);
+}
+.brand-logo svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.brand-name { font: 700 24px/1.1 var(--f-head); letter-spacing: -0.01em; white-space: nowrap; }
+.brand-sub { font-size: 16px; color: var(--muted); margin-top: 2px; white-space: nowrap; }
+.tabs {
+  display: flex; gap: 4px; padding: 5px;
+  border-radius: 14px; border: 1px solid var(--border); background: var(--surface);
+}
+.tab {
+  display: flex; align-items: center; gap: 10px;
+  font: 600 20px var(--f-head); padding: 8px 16px; border-radius: 10px;
+  border: 0; background: transparent; color: var(--muted); cursor: pointer; text-decoration: none;
+  transition: background .2s, color .2s;
+}
+.tab:hover { color: var(--text); }
+.tab[aria-current="page"] { background: var(--surface-3); color: var(--text); }
+.top-actions { display: flex; align-items: center; gap: 8px; flex: 1; justify-content: flex-end; }
+.pill {
+  font: 600 15px var(--f-body); color: var(--muted);
+  padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border);
+  display: inline-flex; align-items: center; gap: 8px; white-space: nowrap;
+}
+.pill i { width: 9px; height: 9px; border-radius: 50%; background: var(--warn); display: inline-block; }
+.pill.live i { background: var(--good); }
+.pill.off i { background: var(--bad); }
+
+/* ---------- Main ---------- */
+.main { position: absolute; top: 72px; bottom: 64px; left: 0; right: 0; }
+
+/* ---------- Footer ---------- */
+.footer {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 64px;
+  display: flex; align-items: center; gap: 16px; padding: 0 24px 5px;
+  border-top: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 55%, var(--bg));
+  z-index: 20;
+}
+.progress { position: absolute; left: 0; right: 0; bottom: 0; height: 5px; background: var(--surface-3); }
+.progress i { display: block; height: 100%; width: 0; background: var(--brand); transition: width .35s ease; }
+.f-left { flex: 1; display: flex; align-items: baseline; gap: 12px; min-width: 0; }
+.f-count { font: 700 20px var(--f-head); white-space: nowrap; }
+.f-title { font-size: 18px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.f-center { display: flex; align-items: center; gap: 10px; }
+.f-hint { font-size: 17px; color: var(--muted); min-width: 300px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 460px; }
+.f-right { flex: 1; display: flex; justify-content: flex-end; align-items: center; gap: 10px; font-size: 16px; color: var(--muted); }
+
+/* ---------- Shared bits ---------- */
+h1 { font: 700 54px/1.06 var(--f-head); letter-spacing: -0.025em; margin: 0; }
+.lead { font-size: 26px; line-height: 1.38; color: var(--text-2); margin: 10px 0 0; max-width: 1240px; }
+.code {
+  margin: 0; font: 500 19px/1.6 var(--f-mono); color: var(--text-2);
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 14px 20px; white-space: pre; box-shadow: var(--shadow); overflow: hidden;
+}
+.code.sm { font-size: 17px; line-height: 1.55; padding: 12px 18px; }
+.code.xs { font-size: 15px; line-height: 1.5; padding: 10px 14px; }
+.kw { color: var(--kw); font-weight: 700; }
+.str { color: var(--str); }
+.num { color: var(--num); }
+.com { color: var(--com); font-style: italic; }
+.tn { font-weight: 700; }
+.fkn { font-weight: 600; }
+mark.hot {
+  color: inherit; background: color-mix(in srgb, var(--c-loyalty_cards) 22%, transparent);
+  border-radius: 6px; padding: 0 3px;
+  box-shadow: 0 0 0 2px var(--c-loyalty_cards);
+  animation: hotPulse 1.8s ease-in-out infinite;
+}
+@keyframes hotPulse { 50% { box-shadow: 0 0 0 2px var(--c-loyalty_cards), 0 0 22px 2px color-mix(in srgb, var(--c-loyalty_cards) 55%, transparent); } }
+.chip {
+  display: inline-flex; align-items: center; gap: 8px;
+  font: 600 19px var(--f-mono); padding: 6px 12px; border-radius: 10px;
+  background: var(--surface-2); border: 1px solid var(--border);
+}
+.callout {
+  background: var(--surface); border: 1px solid var(--border-2); border-radius: var(--radius);
+  padding: 14px 18px; font-size: 22px; line-height: 1.4; box-shadow: var(--shadow);
+}
+.callout.bad { border-color: color-mix(in srgb, var(--bad) 60%, transparent); background: color-mix(in srgb, var(--bad) 9%, var(--surface)); }
+.callout.good { border-color: color-mix(in srgb, var(--good) 60%, transparent); background: color-mix(in srgb, var(--good) 9%, var(--surface)); }
+.callout.sm { font-size: 20px; padding: 10px 14px; }
+.pgerr { display: block; margin-top: 8px; font: 600 16px/1.45 var(--f-mono); color: var(--bad); white-space: pre-wrap; }
+.pgerr .d { color: var(--text-2); font-weight: 500; }
+.toast-pop { animation: popIn .32s cubic-bezier(.2, 1.3, .4, 1) both; }
+@keyframes popIn { from { opacity: 0; transform: translateY(8px) scale(.97); } }
+.shake { animation: shake .4s ease; }
+@keyframes shake { 20% { transform: translateX(-8px); } 40% { transform: translateX(7px); } 60% { transform: translateX(-5px); } 80% { transform: translateX(3px); } }
+[data-show]:not(.shown) { display: none !important; }
+[data-show].shown { animation: popIn .3s ease both; }
+
+/* ---------- Table cards ---------- */
+.tcard {
+  position: relative; flex: none;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: var(--shadow); overflow: hidden;
+}
+.tcard::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 4px; background: var(--tc, var(--c-neutral)); }
+.tcard-head {
+  display: flex; align-items: center; gap: 10px; padding: 12px 16px 6px;
+  font: 700 22px var(--f-head); color: var(--tc, var(--text));
+}
+.tdot { width: 11px; height: 11px; border-radius: 4px; background: var(--tc, var(--c-neutral)); flex: none; }
+.tcard-head .badge { margin-left: auto; font: 600 14px var(--f-body); color: var(--muted); }
+.tcard table { border-collapse: collapse; font: 500 21px var(--f-mono); width: 100%; }
+.tcard th {
+  font: 600 16px var(--f-mono); color: var(--muted); text-align: left;
+  padding: 6px 14px; border-bottom: 1px solid var(--border); white-space: nowrap;
+}
+.th-in { display: inline-flex; align-items: center; gap: 6px; }
+.tcard th.pk .ico-key { color: var(--tc); }
+.tcard th.fk { color: var(--cc); }
+.tcard td { padding: 0 14px; height: 38px; white-space: nowrap; color: var(--text-2); transition: background .2s, color .2s; }
+.tcard td.pkcell { color: var(--text); font-weight: 700; }
+.tcard td.fkcell { font-weight: 600; color: var(--cc); }
+.tcard td.null { color: var(--muted); font-style: italic; font-weight: 500; }
+.tcard td.num { text-align: right; }
+.tcard tbody tr { transition: opacity .2s; }
+.tcard tbody tr + tr td { border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent); }
+.tcard tbody tr.hl td { background: color-mix(in srgb, var(--tc) 17%, transparent); }
+.tcard tbody tr.good-hl td { background: color-mix(in srgb, var(--good) 18%, transparent); }
+.diagram.hovering .tcard tbody tr:not(.hl) { opacity: .32; }
+.tcard td.cell-bad {
+  color: var(--bad); font-weight: 700;
+  background: color-mix(in srgb, var(--bad) 14%, transparent);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--bad) 70%, transparent);
+}
+.tcard td.cell-ok { color: var(--good); font-weight: 700; }
+.tcard tr.ghost td { color: var(--bad); text-decoration: line-through; background: color-mix(in srgb, var(--bad) 10%, transparent); }
+.tcard tr.added td { background: color-mix(in srgb, var(--good) 14%, transparent); }
+.tcard tr.gone td { opacity: .35; text-decoration: line-through; }
+.tcard.is-hidden { display: none; }
+.tcard tr.clickable { cursor: pointer; }
+.tcard tr.picked td { background: color-mix(in srgb, var(--tc) 22%, transparent); }
+.tcard.col-glow td[data-col="id"], .tcard.col-glow th[data-col="id"] { background: color-mix(in srgb, var(--tc) 12%, transparent); }
+
+/* ---------- Diagram + links ---------- */
+.diagram { position: relative; display: flex; align-items: flex-start; }
+svg.links { position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; z-index: 3; }
+.link { fill: none; stroke: var(--lc); stroke-width: 2.6; opacity: .78; transition: opacity .2s, stroke-width .2s; }
+.link-dot { fill: var(--lc); transition: opacity .2s; }
+.diagram.hovering .link:not(.hl), .diagram.hovering .link-dot:not(.hl) { opacity: .1; }
+.link.hl { opacity: 1; stroke-width: 3.6; stroke-dasharray: 9 7; animation: flow .7s linear infinite; }
+@keyframes flow { to { stroke-dashoffset: -16; } }
+
+/* ---------- Mini result tables (inside slides) ---------- */
+.rtable { border-collapse: collapse; font: 500 19px var(--f-mono); background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); }
+.rtable caption { caption-side: top; text-align: left; font: 600 15px var(--f-body); color: var(--muted); padding: 0 0 6px 2px; }
+.rtable th { text-align: left; font: 600 15px var(--f-mono); color: var(--muted); padding: 7px 14px; border-bottom: 1px solid var(--border); background: var(--surface-2); }
+.rtable td { padding: 6px 14px; border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent); color: var(--text-2); white-space: nowrap; }
+.rtable td.null { color: var(--muted); font-style: italic; }
+.rtable tr.leaving td { color: var(--bad); text-decoration: line-through; background: color-mix(in srgb, var(--bad) 10%, transparent); }
+
+/* ---------- Overlays ---------- */
+.overlay-bg { position: absolute; inset: 0; z-index: 40; background: rgba(5, 7, 12, .55); display: grid; place-items: center; }
+:root[data-theme="light"] .overlay-bg { background: rgba(30, 36, 50, .28); }
+.help {
+  width: 660px; background: var(--surface); border: 1px solid var(--border-2); border-radius: 18px;
+  box-shadow: 0 30px 80px -20px rgba(0, 0, 0, .7); padding: 24px 28px; animation: popIn .25s ease both;
+}
+.help h2 { margin: 0 0 12px; font: 700 32px var(--f-head); display: flex; align-items: center; }
+.help h2 .icon-btn { margin-left: auto; }
+.help dl { margin: 0; display: grid; grid-template-columns: 190px 1fr; gap: 9px 16px; align-items: center; font-size: 21px; }
+.help dt { display: flex; gap: 6px; flex-wrap: wrap; }
+.help dd { margin: 0; color: var(--text-2); }
+
+/* ---------- Reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; transition-delay: 0s !important; }
+  .link.hl { stroke-dasharray: none; }
+}
+/* ---------- Story slides ---------- */
+.mode { position: absolute; inset: 0; }
+.slide { position: absolute; inset: 0; padding: 26px 56px 22px; display: flex; flex-direction: column; }
+.slide.enter { animation: slideIn .32s ease both; }
+@keyframes slideIn { from { opacity: 0; transform: translateY(10px); } }
+.slide-head { display: flex; gap: 20px; align-items: flex-start; margin-bottom: 20px; flex: none; }
+.step-no {
+  flex: none; width: 54px; height: 54px; margin-top: 2px; border-radius: 14px;
+  display: grid; place-items: center; font: 700 24px var(--f-head);
+  background: var(--surface); border: 1px solid var(--border-2); color: var(--muted);
+}
+.slide-body { flex: 1; min-height: 0; position: relative; }
+.row { display: flex; gap: 32px; align-items: flex-start; }
+.col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.col > .chip, .col > .ask, .col > .btn { align-self: flex-start; }
+.oneliner {
+  font: 600 28px/1.3 var(--f-head); letter-spacing: -0.01em;
+  padding: 16px 24px; border-radius: var(--radius);
+  background: var(--surface); border: 1px solid var(--border);
+  border-left: 6px solid var(--ol, var(--brand)); box-shadow: var(--shadow);
+}
+.side-note { font-size: 21px; line-height: 1.4; color: var(--muted); margin: 0; }
+.side-note b { color: var(--text); }
+.answers { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; }
+.answers li { font-size: 23px; padding: 12px 16px; border-radius: 12px; background: var(--surface); border: 1px solid var(--border); }
+.btn-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.msg:empty { display: none; }
+.msg .code { margin-top: 10px; }
+
+/* messy sheet */
+.sheet { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; flex: none; }
+.sheet-bar { display: flex; align-items: center; gap: 12px; padding: 10px 16px; font: 600 17px var(--f-mono); color: var(--muted); border-bottom: 1px solid var(--border); background: var(--surface-2); }
+.sheet-dots { display: inline-flex; gap: 6px; }
+.sheet-dots i { width: 11px; height: 11px; border-radius: 50%; background: var(--surface-3); display: block; }
+.sheet table { border-collapse: collapse; font: 500 22px var(--f-mono); }
+.sheet th { font: 600 17px var(--f-mono); text-align: left; padding: 10px 18px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.sheet th.sh-c { color: var(--c-customers); background: color-mix(in srgb, var(--c-customers) 8%, transparent); }
+.sheet th.sh-o { color: var(--c-orders); background: color-mix(in srgb, var(--c-orders) 8%, transparent); }
+.sheet td { padding: 0 18px; height: 46px; white-space: nowrap; color: var(--text-2); border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent); transition: background .3s, color .3s; }
+.sheet tr[data-cid="1"] td:nth-child(2), .sheet tr[data-cid="1"] td:nth-child(3) { color: var(--text); }
+.sheet td.stale { color: var(--bad); font-weight: 700; background: color-mix(in srgb, var(--bad) 14%, transparent); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--bad) 65%, transparent); animation: stalePulse 1.6s ease-in-out infinite; }
+@keyframes stalePulse { 50% { background: color-mix(in srgb, var(--bad) 26%, transparent); } }
+.sheet td.fresh { color: var(--good); font-weight: 700; background: color-mix(in srgb, var(--good) 14%, transparent); }
+.tag-old { font: 700 13px var(--f-body); color: #fff; background: var(--bad); border-radius: 6px; padding: 2px 6px; margin-left: 8px; vertical-align: 3px; }
+
+/* split animation */
+.split-wrap { display: grid; }
+.split-wrap > * { grid-area: 1 / 1; }
+.split-wrap .sheet-view { transition: opacity .3s ease, transform .3s ease; }
+.split-wrap.is-split .sheet-view { opacity: 0; transform: scale(.94); pointer-events: none; }
+.split-wrap .cards-view { opacity: 0; pointer-events: none; transition: opacity .25s ease .12s; }
+.split-wrap.is-split .cards-view { opacity: 1; pointer-events: auto; }
+.cards-view .tcard { transition: transform .45s cubic-bezier(.2, .9, .3, 1) .12s; }
+.cards-view .tcard[data-table="customers"] { transform: translateX(180px); }
+.cards-view .tcard[data-table="orders"] { transform: translateX(-220px); }
+.split-wrap.is-split .cards-view .tcard { transform: none; }
+
+/* code marks that get switched off */
+mark.hot.struck { animation: none; box-shadow: 0 0 0 2px var(--bad); background: color-mix(in srgb, var(--bad) 18%, transparent); text-decoration: line-through; text-decoration-thickness: 3px; }
+
+/* many-to-many */
+.mid-slot { flex: none; display: flex; align-items: flex-start; justify-content: center; }
+.placeholder {
+  width: 400px; height: 300px; margin-top: 40px; border-radius: var(--radius);
+  border: 3px dashed color-mix(in srgb, var(--c-order_items) 55%, transparent);
+  display: grid; place-items: center; text-align: center; color: var(--muted); padding: 20px;
+}
+.placeholder .q { font: 700 80px/1 var(--f-head); color: var(--c-order_items); }
+.slide-in { animation: slideUp .55s cubic-bezier(.2, 1.25, .35, 1) both; }
+@keyframes slideUp { from { opacity: 0; transform: translateY(110px) scale(.9); } }
+.aha-badge {
+  display: inline-flex; align-items: center; gap: 8px; margin-left: 14px; vertical-align: 10px;
+  font: 700 22px var(--f-head); color: #fff; background: var(--c-order_items);
+  padding: 6px 14px; border-radius: 999px; box-shadow: 0 0 30px -4px var(--c-order_items);
+  animation: badgePop .5s cubic-bezier(.2, 1.6, .4, 1) both;
+}
+@keyframes badgePop { from { opacity: 0; transform: scale(.4) rotate(-12deg); } }
+.slide.aha::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(900px 420px at 50% 62%, color-mix(in srgb, var(--c-order_items) 16%, transparent), transparent 70%);
+  animation: fadeIn .6s ease both;
+}
+@keyframes fadeIn { from { opacity: 0; } }
+.try-tabs { display: flex; gap: 12px; margin-bottom: 18px; }
+.try-tabs .btn[aria-pressed="true"] { border-color: var(--bad); background: color-mix(in srgb, var(--bad) 12%, var(--surface-2)); }
+.mm-block { position: absolute; display: flex; flex-direction: column; gap: 12px; }
+
+/* trick */
+.trick-wrap { display: grid; grid-template-columns: 640px 1fr; gap: 36px; align-items: start; }
+.pair-chips { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.pair-chips .btn { justify-content: flex-start; }
+.own-inputs { display: flex; gap: 10px; align-items: center; font-size: 21px; color: var(--muted); }
+.own-inputs input {
+  font: 600 21px var(--f-body); color: var(--text); background: var(--surface);
+  border: 1px solid var(--border-2); border-radius: 10px; padding: 8px 12px; width: 190px;
+}
+.qcard {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; gap: 16px; box-shadow: var(--shadow);
+}
+.qcard .qt { font: 600 24px/1.3 var(--f-head); }
+.qcard .qn { color: var(--muted); font: 700 17px var(--f-mono); display: block; margin-bottom: 2px; }
+.yn { display: flex; gap: 6px; flex: none; }
+.yn .btn { min-width: 76px; justify-content: center; }
+.yn .btn[aria-pressed="true"][data-v="yes"] { background: color-mix(in srgb, var(--good) 18%, var(--surface-2)); border-color: var(--good); }
+.yn .btn[aria-pressed="true"][data-v="no"] { background: color-mix(in srgb, var(--bad) 16%, var(--surface-2)); border-color: var(--bad); }
+.result { min-height: 104px; }
+.result .r-title { font: 700 30px var(--f-head); }
+.result .r-fk { font: 600 19px var(--f-mono); margin-top: 6px; color: var(--text-2); }
+.result .r-empty { color: var(--muted); font-size: 22px; }
+.ttable { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 21px; line-height: 1.35; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); }
+.ttable th { text-align: left; font: 600 17px/1.3 var(--f-body); color: var(--muted); padding: 12px 16px; border-bottom: 1px solid var(--border); vertical-align: bottom; }
+.ttable td { padding: 13px 16px; border-top: 1px solid var(--border); vertical-align: top; }
+.ttable tbody tr:first-child td { border-top: 0; }
+.ttable tr { transition: background .25s, opacity .25s; }
+.ttable.has-pick tbody tr:not(.picked) { opacity: .4; }
+.ttable tr.picked td { background: var(--brand-soft); }
+.ttable th.qcol { width: 130px; }
+.ttable th.relcol { width: 180px; }
+.ttable .rel { font: 700 23px var(--f-head); white-space: nowrap; }
+.yes { color: var(--good); font-weight: 700; }
+.no { color: var(--bad); font-weight: 700; }
+
+/* context (before step 1) */
+.ctx { display: grid; grid-template-columns: 1fr 620px; gap: 52px; height: 100%; }
+.ctx-left { display: flex; flex-direction: column; gap: 22px; padding-top: 8px; min-width: 0; }
+.ctx-kicker { font: 600 20px var(--f-body); color: var(--muted); }
+.ctx-title { font: 700 84px/0.98 var(--f-head); letter-spacing: -0.04em; margin: 0; }
+.ctx-title span { display: block; color: var(--muted); }
+.ctx .lead { margin-top: 0; }
+.ctx-why { margin: 0; font-size: 23px; line-height: 1.5; color: var(--text-2); max-width: 780px; }
+.ctx h3 { margin: 0 0 10px; font: 700 20px var(--f-head); color: var(--muted); }
+.ctx-right { display: flex; flex-direction: column; gap: 14px; }
+.ctx-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 20px; box-shadow: var(--shadow); }
+.ctx-path { margin: 0; padding: 0; list-style: none; counter-reset: p; display: grid; gap: 4px; }
+.ctx-path li { counter-increment: p; display: flex; gap: 12px; align-items: baseline; font-size: 21px; }
+.ctx-path li::before { content: counter(p); font: 700 16px var(--f-mono); color: var(--brand); width: 18px; flex: none; }
+.ctx-goals { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+.ctx-goals li { font-size: 20px; line-height: 1.35; display: flex; gap: 10px; }
+.ctx-goals li::before { content: '✓'; color: var(--good); font-weight: 700; }
+.ctx-tables { display: flex; flex-wrap: wrap; gap: 8px; }
+.tchip { font: 600 17px var(--f-mono); padding: 5px 11px; border-radius: 9px; color: var(--tc); border: 1px solid color-mix(in srgb, var(--tc) 55%, transparent); background: color-mix(in srgb, var(--tc) 10%, transparent); }
+.json { font: 500 20px/1.55 var(--f-mono); color: var(--text-2); }
+.json .jk { color: var(--text); }
+
+/* gotchas */
+.gotchas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px 18px; }
+.gcard2 {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 14px 18px 16px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 8px; min-height: 0;
+}
+.gcard2 .ask { font-size: 22px; line-height: 1.3; text-underline-offset: 5px; }
+.gcard2 .ans { margin: 0; font-size: 18px; line-height: 1.42; color: var(--text-2); }
+.gcard2 .ans code { font: 600 15.5px var(--f-mono); color: var(--text); }
+.gcard2.open { border-color: color-mix(in srgb, var(--brand) 45%, transparent); }
+.gcard2 .ico-e { font-size: 20px; margin-right: 6px; }
+
+/* recap */
+.recap-top { display: grid; grid-template-columns: 1fr 1fr 1.1fr; gap: 18px; }
+.rcard { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 20px; box-shadow: var(--shadow); border-top: 5px solid var(--rc, var(--brand)); }
+.rcard h3 { margin: 0 0 8px; font: 700 25px var(--f-head); }
+.rcard p { margin: 0; font-size: 20px; line-height: 1.42; color: var(--text-2); }
+.mini-trick { width: 100%; border-collapse: collapse; font-size: 19px; }
+.mini-trick td { padding: 6px 4px; border-top: 1px solid var(--border); }
+.mini-trick tr:first-child td { border-top: 0; }
+.recap-code { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 16px; }
+.pcard { background: var(--surface); border: 1px solid var(--border); border-left: 5px solid var(--cc); border-radius: var(--radius); padding: 12px 16px; box-shadow: var(--shadow); min-width: 0; }
+.pcard h3 { margin: 0 0 6px; font: 700 20px var(--f-head); }
+.pcard pre { margin: 0; font: 500 14.5px/1.5 var(--f-mono); color: var(--text-2); white-space: pre; overflow: hidden; }
+
+/* bigint / uuid switch on code blocks */
+.idswitch { position: relative; }
+.idopt { position: absolute; top: 8px; right: 10px; z-index: 2; display: flex; gap: 3px; padding: 3px; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--border-2); }
+.idbtn { font: 600 14px var(--f-mono); padding: 4px 11px; border-radius: 7px; border: 0; background: transparent; color: var(--muted); cursor: pointer; }
+.idbtn:hover { color: var(--text); }
+.idbtn[aria-pressed="true"] { background: var(--surface-3); color: var(--text); }
+.idbtn[data-opt="uuid"][aria-pressed="true"] { color: var(--brand); }
+.uuid-line { display: block; margin-top: 8px; font-size: 17px; color: var(--text-2); }
+.recap-uuid { margin: 14px 0 0; font-size: 19px; }
+/* Back rebuilds a slide without replaying its entrance animations */
+.slide.instant, .slide.instant * { transition: none !important; }
+.slide.settled.aha::before { animation: none; }
+
+/* ================= Added for the visuals + live coding version ================= */
+:root { --c-employees: #c2b8ff; --c-comments: #5ce1e6; --amber: #fbbf24; }
+:root[data-theme="light"] { --c-employees: #5b48c9; --c-comments: #0e7f86; --amber: #b45309; }
+.c-employees { color: var(--c-employees); --cc: var(--c-employees); }
+.c-comments { color: var(--c-comments); --cc: var(--c-comments); }
+.t-employees { --tc: var(--c-employees); }
+.t-comments { --tc: var(--c-comments); }
+
+/* bigger type for the projector: body ~24px, code ~20px */
+.code { font-size: 20px; }
+.code.sm { font-size: 19px; line-height: 1.55; }
+.code.xs { font-size: 18px; line-height: 1.5; }
+.callout { font-size: 24px; }
+.callout.sm { font-size: 22px; }
+.side-note { font-size: 22px; }
+.rtable { font-size: 20px; }
+.rtable th { font-size: 16px; }
+.pgerr { font-size: 18px; }
+.cap { font: 600 28px/1.3 var(--f-head); letter-spacing: -0.01em; color: var(--text); margin: 0; }
+.cap.muted { color: var(--muted); }
+.cap .k { color: var(--brand); }
+[data-gone].gone { display: none !important; }
+
+.topbar .btn.small { font-size: 17px; padding: 7px 12px; }
+.topbar .btn kbd { font-size: 13px; padding: 1px 6px; }
+.f-right { gap: 14px; }
+.f-right kbd { font-size: 13px; padding: 1px 6px; }
+
+/* the four beats of every relationship topic */
+.slide-head { align-items: center; }
+.slide-head > div:nth-child(2) { flex: 1; min-width: 0; }
+.beats { display: flex; gap: 6px; flex: none; align-self: center; }
+.beats span { font: 600 16px var(--f-body); color: var(--muted); padding: 7px 12px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); white-space: nowrap; }
+.beats span.on { color: var(--on-brand); background: var(--brand); border-color: transparent; }
+.beats span.done { color: var(--text-2); border-color: var(--border-2); }
+
+/* opening slide */
+.open { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 34px; }
+.open .ctx-title { font-size: 120px; }
+@keyframes bob { 50% { transform: translateY(-10px); } }
+
+/* people diagrams ("In real life") */
+.people-wrap { display: flex; flex-direction: column; align-items: center; gap: 10px; height: 100%; }
+svg.people { overflow: visible; display: block; flex: none; }
+.pn circle { fill: var(--surface); stroke: var(--pc, var(--border-2)); stroke-width: 3; }
+.pn.hot circle { stroke: var(--brand); stroke-width: 4; }
+.pn.ghost circle { stroke: var(--bad); stroke-dasharray: 8 7; fill: color-mix(in srgb, var(--bad) 8%, var(--surface)); }
+.pn .pn-e { font-size: 50px; text-anchor: middle; dominant-baseline: central; }
+.pn .pn-l { font: 600 23px var(--f-head); fill: var(--text-2); text-anchor: middle; paint-order: stroke; stroke: var(--bg); stroke-width: 8px; stroke-linejoin: round; }
+.pn .pn-l.lr { text-anchor: start; }
+.pn .pn-l.ll { text-anchor: end; }
+.pn.box rect { fill: color-mix(in srgb, var(--c-order_items) 12%, var(--surface)); stroke: var(--c-order_items); stroke-width: 3; }
+.pe path { stroke: var(--lc, var(--muted)); stroke-width: 5; fill: none; stroke-linecap: round; }
+.pe.bad path { stroke: var(--bad); stroke-dasharray: 10 9; }
+.pe text { font: 600 19px var(--f-body); fill: var(--text-2); text-anchor: middle; paint-order: stroke; stroke: var(--bg); stroke-width: 7px; stroke-linejoin: round; }
+.pe .x { font: 800 34px var(--f-head); fill: var(--bad); }
+.people [data-show].shown { animation: fadeIn .45s ease both; }
+.people .pe.shown path:not(.nodraw) { stroke-dasharray: 1; stroke-dashoffset: 1; animation: drawLine .7s ease forwards; }
+@keyframes drawLine { to { stroke-dashoffset: 0; } }
+.slide.settled .people .pe path { animation: none !important; stroke-dasharray: none; }
+.slide.settled .people .pe.bad path { stroke-dasharray: 10 9; }
+.capbar { min-height: 46px; display: flex; align-items: center; justify-content: center; }
+
+/* one to many / many to one switch */
+.flip { display: inline-flex; padding: 5px; gap: 5px; border-radius: 14px; border: 1px solid var(--border-2); background: var(--surface); }
+.flip button { border: 0; background: transparent; color: var(--muted); padding: 10px 16px; border-radius: 10px; cursor: pointer; font: 600 21px var(--f-body); white-space: nowrap; }
+.flip button:hover { color: var(--text); }
+.flip button[aria-pressed="true"] { background: var(--brand-soft); color: var(--text); box-shadow: inset 0 0 0 2px var(--brand); }
+
+/* Write it */
+.write { display: grid; grid-template-columns: 1fr 470px; gap: 40px; align-items: start; }
+.write .code { font-size: 22px; line-height: 1.6; }
+.write-go { display: flex; flex-direction: column; gap: 18px; align-items: flex-start; padding-top: 8px; }
+.write-go .big-ico { font-size: 92px; line-height: 1; }
+.write-go .btn.big { font-size: 28px; }
+
+/* Spot the mistake */
+.spot-tabs { display: flex; gap: 10px; margin-bottom: 14px; }
+.spot-tabs .btn[aria-pressed="true"] { border-color: var(--bad); background: color-mix(in srgb, var(--bad) 12%, var(--surface-2)); }
+.spot { display: grid; grid-template-columns: minmax(0, 1fr) 640px; gap: 28px; align-items: start; }
+.spot .lbl { font: 700 18px var(--f-body); color: var(--muted); margin: 0 0 8px; display: flex; align-items: center; gap: 8px; }
+.spot .lbl.fix { color: var(--good); }
+.spot .code { font-size: 20px; }
+.spot .out { display: flex; flex-direction: column; gap: 12px; }
+.spot .ph { border: 2px dashed var(--border-2); border-radius: var(--radius); padding: 26px; text-align: center; color: var(--muted); font: 600 24px var(--f-head); }
+.spot .res { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; box-shadow: var(--shadow); }
+.spot .res.before { opacity: .55; }
+.spot .res .tagline { font: 700 20px var(--f-mono); color: var(--good); }
+.spot .res .pgerr { margin-top: 0; }
+.spot .res .rtable { box-shadow: none; }
+.spot .why { font: 600 25px/1.35 var(--f-head); color: var(--text); padding: 12px 16px; border-radius: var(--radius); border-left: 6px solid var(--good); background: color-mix(in srgb, var(--good) 9%, var(--surface)); }
+.spot-actions { display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
+mark.hot.bugmark { animation: none; background: color-mix(in srgb, var(--bad) 22%, transparent); box-shadow: 0 0 0 2px var(--bad); }
+mark.hot.fixmark { background: color-mix(in srgb, var(--good) 22%, transparent); box-shadow: 0 0 0 2px var(--good); animation: none; }
+
+/* junction designs */
+.designs { display: grid; grid-template-columns: 1fr 1fr; gap: 26px; }
+.dcard { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--shadow); border-top: 5px solid var(--dc); display: flex; flex-direction: column; gap: 12px; }
+.dcard h3 { margin: 0; font: 700 28px var(--f-head); display: flex; align-items: center; gap: 12px; }
+.dcard h3 .tag { font: 700 15px var(--f-body); padding: 4px 10px; border-radius: 999px; background: var(--good); color: #05210f; }
+.dcard .code { font-size: 19px; box-shadow: none; }
+.dcard .use { font-size: 22px; color: var(--text-2); margin: 0; }
+.dcard .foot { font-size: 19px; color: var(--muted); margin: 0; }
+.verdict-line { margin-top: 18px; text-align: center; }
+
+/* self reference */
+.selfs { display: flex; gap: 40px; align-items: flex-start; }
+.selfs .chip { margin-top: 12px; }
+
+/* game slide */
+.gamehero { display: grid; grid-template-columns: 1fr 520px; gap: 40px; align-items: center; height: 100%; }
+.gamebins { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.gamebins div { border: 2px dashed var(--border-2); border-radius: 18px; padding: 18px 10px; display: flex; flex-direction: column; align-items: center; gap: 10px; font: 700 24px var(--f-head); background: var(--surface); }
+.gamebins svg { width: 150px; height: 56px; }
+.gamebins svg .n { fill: var(--surface-3); stroke: var(--text-2); stroke-width: 2; }
+.gamebins svg .l { stroke: var(--text-2); stroke-width: 2.4; fill: none; }
+.gamecta { display: flex; flex-direction: column; gap: 18px; align-items: flex-start; }
+.gamecta .big-ico { font-size: 110px; line-height: 1; }
+
+/* practice menu */
+.practice { display: flex; flex-direction: column; gap: 16px; }
+.prow h3 { margin: 0 0 8px; font: 700 20px var(--f-head); color: var(--muted); }
+.ptiles { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+.ptile { text-align: left; display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; border-radius: 16px; border: 1px solid var(--border); background: var(--surface); box-shadow: var(--shadow); cursor: pointer; color: var(--text); border-top: 4px solid var(--gc, var(--brand)); transition: transform .15s, border-color .2s; min-height: 132px; }
+.ptile:hover { transform: translateY(-3px); border-color: var(--gc, var(--brand)); }
+.ptile .em { font-size: 34px; line-height: 1; }
+.ptile .nm { font: 700 22px/1.15 var(--f-head); }
+.ptile .sk { font-size: 17px; color: var(--muted); line-height: 1.3; }
+
+/* detour slides opened from the practice menu */
+.backbar { display: flex; align-items: center; gap: 12px; }
+
+/* recap code, big enough for the back row */
+.recap-code .pcard h3 { font-size: 24px; }
+.recap-code .pcard pre { font-size: 19px; line-height: 1.45; }
+
+/* Space + P / G / S hint */
+.keyhint { white-space: nowrap; }
+.btn kbd { white-space: nowrap; }
+
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><marker id="mk-customers" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--c-customers)"/></marker><marker id="mk-orders" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--c-orders)"/></marker><marker id="mk-products" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--c-products)"/></marker><marker id="mk-employees" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--c-employees)"/></marker><marker id="mk-comments" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--c-comments)"/></marker></defs></svg>
+<div id="host"><div id="stage">
+<header class="topbar"><div class="brand"><div class="brand-logo" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="2.5" y="3" width="9" height="7.5" rx="2"/><rect x="12.5" y="13.5" width="9" height="7.5" rx="2"/><path d="M7 10.5v4a2.5 2.5 0 0 0 2.5 2.5h3"/></svg></div><div><div class="brand-name">Database Relations</div><div class="brand-sub">Keys and joins in PostgreSQL</div></div></div><div class="top-actions"><button class="btn small" id="pgBtn" title="Open the playground (Space + P)">🧪 Playground <kbd>Space+P</kbd></button><button class="btn small" id="gameBtn" title="Open the game (Space + G)">🎮 Game <kbd>Space+G</kbd></button><button class="icon-btn" id="helpBtn" title="Keyboard (?)" aria-label="Keyboard shortcuts">?</button><button class="icon-btn" id="themeBtn" title="Light or dark (T)" aria-label="Toggle theme"><svg id="themeIcon" viewBox="0 0 24 24"></svg></button><button class="icon-btn" id="fsBtn" title="Fullscreen (F)" aria-label="Toggle fullscreen"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button></div></header>
+<main class="main"><section class="mode" id="mode-story" aria-label="Story"></section></main>
+<footer class="footer"><div class="f-left"><span class="f-count" id="fCount"></span><span class="f-title" id="fTitle"></span></div><div class="f-center"><button class="icon-btn" id="prevBtn" aria-label="Previous"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button><button class="icon-btn" id="nextBtn" aria-label="Next"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button></div><div class="f-right" id="fRight"></div><div class="progress"><i id="progress"></i></div></footer>
+<div class="overlay-bg" id="help" hidden><div class="help" role="dialog" aria-label="Keyboard shortcuts"><h2>Keyboard ⌨️ <button class="icon-btn" data-close="help" aria-label="Close">✕</button></h2><dl>
+<dt><kbd>→</kbd><kbd>Space</kbd></dt><dd>Next click or next slide</dd>
+<dt><kbd>←</kbd></dt><dd>Undo one click</dd>
+<dt><kbd>Space</kbd> + <kbd>P</kbd></dt><dd>Open the playground (hold Space, press P)</dd>
+<dt><kbd>Space</kbd> + <kbd>G</kbd></dt><dd>Open the game</dd>
+<dt><kbd>Space</kbd> + <kbd>S</kbd></dt><dd>Back to the story, from any tab</dd>
+<dt><kbd>B</kbd></dt><dd>Back to the practice menu</dd>
+<dt><kbd>T</kbd> <kbd>F</kbd></dt><dd>Light or dark, full screen</dd>
+<dt><kbd>Home</kbd> <kbd>End</kbd></dt><dd>First or last slide</dd>
+</dl></div></div>
+</div></div>
+
+<script>window.APPDATA = {"SCHEMA": {"customers": [{"n": "id", "pk": true}, {"n": "referred_by", "fk": "customers"}], "orders": [{"n": "id", "pk": true}, {"n": "customer_id", "fk": "customers"}], "loyalty_cards": [{"n": "id", "pk": true}, {"n": "customer_id", "fk": "customers", "unique": true}], "products": [{"n": "id", "pk": true}], "order_items": [{"n": "order_id", "pk": true, "fk": "orders"}, {"n": "product_id", "pk": true, "fk": "products"}], "employees": [{"n": "id", "pk": true}, {"n": "manager_id", "fk": "employees"}], "comments": [{"n": "id", "pk": true}, {"n": "parent_id", "fk": "comments"}]}, "SLICE": {"customers": [{"id": 1, "first_name": "Emma", "last_name": "Carter", "email": "emma.carter@example.com", "phone": "(512) 555-0143", "city": "Austin", "state": "TX", "postal_code": "78704", "marketing_opt_in": true, "referred_by": null, "created_at": "2025-11-03 15:12:00+00"}, {"id": 2, "first_name": "John", "last_name": "Smith", "email": "john.smith@example.net", "phone": "(312) 555-0178", "city": "Chicago", "state": "IL", "postal_code": "60614", "marketing_opt_in": false, "referred_by": null, "created_at": "2025-11-04 23:41:00+00"}, {"id": 3, "first_name": "Olivia", "last_name": "Brooks", "email": "olivia.brooks@example.org", "phone": "(512) 555-0116", "city": "Austin", "state": "TX", "postal_code": "78702", "marketing_opt_in": true, "referred_by": 1, "created_at": "2025-11-06 02:08:00+00"}, {"id": 4, "first_name": "James", "last_name": "Walker", "email": "jwalker@example.com", "phone": "(312) 555-0129", "city": "Chicago", "state": "IL", "postal_code": "60647", "marketing_opt_in": false, "referred_by": 2, "created_at": "2025-11-08 17:30:00+00"}, {"id": 5, "first_name": "Mia", "last_name": "Thompson", "email": "mia.thompson@example.net", "phone": "(303) 555-0152", "city": "Denver", "state": "CO", "postal_code": "80218", "marketing_opt_in": true, "referred_by": 1, "created_at": "2025-11-09 19:54:00+00"}], "orders": [{"id": 1001, "order_number": "ORD-2025-0001", "customer_id": 1, "status": "delivered", "placed_at": "2025-11-05 01:42:00+00", "shipped_at": "2025-11-06 20:59:00+00", "delivered_at": "2025-11-11 20:49:00+00", "payment_method": "apple_pay", "shipping_method": "standard", "shipping_city": "Austin", "shipping_state": "TX", "shipping_postal_code": "78704", "coupon_code": "WELCOME10", "subtotal": 123.99, "discount": 12.4, "shipping_fee": 0.0, "tax": 9.21, "total": 120.8}, {"id": 1002, "order_number": "ORD-2025-0002", "customer_id": 2, "status": "delivered", "placed_at": "2025-11-07 02:15:00+00", "shipped_at": "2025-11-07 22:29:00+00", "delivered_at": "2025-11-10 23:11:00+00", "payment_method": "card", "shipping_method": "standard", "shipping_city": "Chicago", "shipping_state": "IL", "shipping_postal_code": "60614", "coupon_code": null, "subtotal": 79.98, "discount": 0.0, "shipping_fee": 0.0, "tax": 8.2, "total": 88.18}, {"id": 1003, "order_number": "ORD-2025-0003", "customer_id": 3, "status": "delivered", "placed_at": "2025-11-12 20:33:00+00", "shipped_at": "2025-11-14 16:37:00+00", "delivered_at": "2025-11-17 19:51:00+00", "payment_method": "paypal", "shipping_method": "standard", "shipping_city": "Austin", "shipping_state": "TX", "shipping_postal_code": "78702", "coupon_code": "WELCOME10", "subtotal": 34.99, "discount": 3.5, "shipping_fee": 5.99, "tax": 2.6, "total": 40.08}, {"id": 1007, "order_number": "ORD-2025-0007", "customer_id": 4, "status": "delivered", "placed_at": "2025-11-28 15:06:00+00", "shipped_at": "2025-11-29 15:21:00+00", "delivered_at": "2025-12-02 19:19:00+00", "payment_method": "card", "shipping_method": "standard", "shipping_city": "Chicago", "shipping_state": "IL", "shipping_postal_code": "60647", "coupon_code": "BLACKFRIDAY20", "subtotal": 89.98, "discount": 18.0, "shipping_fee": 0.0, "tax": 7.38, "total": 79.36}, {"id": 1026, "order_number": "ORD-2026-0006", "customer_id": 1, "status": "delivered", "placed_at": "2026-01-19 18:27:00+00", "shipped_at": "2026-01-20 17:36:00+00", "delivered_at": "2026-01-22 15:55:00+00", "payment_method": "apple_pay", "shipping_method": "standard", "shipping_city": "Austin", "shipping_state": "TX", "shipping_postal_code": "78704", "coupon_code": null, "subtotal": 29.99, "discount": 0.0, "shipping_fee": 5.99, "tax": 2.47, "total": 38.45}, {"id": 1098, "order_number": "ORD-2026-0078", "customer_id": 1, "status": "delivered", "placed_at": "2026-08-24 22:09:00+00", "shipped_at": "2026-08-25 16:10:00+00", "delivered_at": "2026-08-27 16:39:00+00", "payment_method": "apple_pay", "shipping_method": "express", "shipping_city": "Austin", "shipping_state": "TX", "shipping_postal_code": "78704", "coupon_code": null, "subtotal": 109.98, "discount": 0.0, "shipping_fee": 14.99, "tax": 9.07, "total": 134.04}], "order_items": [{"order_id": 1001, "product_id": 1, "quantity": 1, "unit_price": 99.0}, {"order_id": 1001, "product_id": 6, "quantity": 1, "unit_price": 24.99}, {"order_id": 1002, "product_id": 2, "quantity": 1, "unit_price": 29.99}, {"order_id": 1002, "product_id": 3, "quantity": 1, "unit_price": 49.99}, {"order_id": 1003, "product_id": 4, "quantity": 1, "unit_price": 34.99}, {"order_id": 1007, "product_id": 2, "quantity": 1, "unit_price": 29.99}, {"order_id": 1007, "product_id": 5, "quantity": 1, "unit_price": 59.99}, {"order_id": 1026, "product_id": 2, "quantity": 1, "unit_price": 29.99}, {"order_id": 1098, "product_id": 3, "quantity": 1, "unit_price": 49.99}, {"order_id": 1098, "product_id": 5, "quantity": 1, "unit_price": 59.99}], "products": [{"id": 1, "sku": "KB-MECH75-BRN", "name": "Mechanical Keyboard 75%", "category": "Keyboards", "unit_price": 89.0, "stock_quantity": 56, "is_active": true, "created_at": "2025-10-20 15:00:00+00"}, {"id": 2, "sku": "MS-WL-BLK", "name": "Wireless Mouse", "category": "Mice & Trackpads", "unit_price": 29.99, "stock_quantity": 77, "is_active": true, "created_at": "2025-10-20 21:00:00+00"}, {"id": 3, "sku": "CA-HUB7-USBC", "name": "USB-C Hub 7-in-1", "category": "Cables & Adapters", "unit_price": 49.99, "stock_quantity": 39, "is_active": true, "created_at": "2025-10-21 03:00:00+00"}, {"id": 4, "sku": "DE-LSTAND-ALU", "name": "Laptop Stand", "category": "Desk & Ergonomics", "unit_price": 34.99, "stock_quantity": 106, "is_active": true, "created_at": "2025-10-21 09:00:00+00"}, {"id": 5, "sku": "WL-CAM1080", "name": "1080p Webcam", "category": "Webcams & Lighting", "unit_price": 59.99, "stock_quantity": 78, "is_active": true, "created_at": "2025-10-21 15:00:00+00"}, {"id": 6, "sku": "DE-MAT-FELT-GRY", "name": "Felt Desk Mat", "category": "Desk & Ergonomics", "unit_price": 24.99, "stock_quantity": 112, "is_active": true, "created_at": "2025-10-21 21:00:00+00"}], "loyalty_cards": [{"id": 1, "customer_id": 1, "card_number": "7700 0001 2648", "tier": "silver", "points_balance": 1143, "joined_on": "2025-11-05", "last_activity_on": "2026-08-24"}, {"id": 2, "customer_id": 2, "card_number": "7700 0002 5296", "tier": "bronze", "points_balance": 188, "joined_on": "2025-11-07", "last_activity_on": "2025-11-07"}, {"id": 3, "customer_id": 5, "card_number": "7700 0003 3782", "tier": "bronze", "points_balance": 350, "joined_on": "2025-11-09", "last_activity_on": "2025-11-09"}, {"id": 4, "customer_id": 3, "card_number": "7700 0004 2673", "tier": "bronze", "points_balance": 140, "joined_on": "2025-11-12", "last_activity_on": "2025-11-12"}]}, "NEXT_IDS": {"customers": 101, "orders": 1121, "products": 101, "loyalty_cards": 87}, "DEMO_PHONE": "(512) 555-0199", "COUNTS": {"customers": 100, "orders": 120, "order_items": 259, "products": 100, "loyalty_cards": 86}, "FILES": {"story": "db-relations-story.html", "playground": "db-relations-playground.html", "game": "db-relations-game.html"}};</script>
+<script>
+(() => {
+  'use strict';
+  const D = window.APPDATA || {};
+  const $ = (s, r) => (r || document).querySelector(s);
+  const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
+  const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const reduced = () => mq.matches;
+  const ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ESC[c]);
+  const later = (ms, fn) => setTimeout(fn, reduced() ? 0 : ms);
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem('dbrel:' + k); return v === null ? d : v; } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem('dbrel:' + k, v); } catch (e) { /* storage can be blocked on file:// */ } }
+  };
+  const money = (v) => '$' + Number(v).toFixed(2);
+  const state = { scale: 1 };
+
+  const ICON = {
+    key: '<svg class="ico ico-key" viewBox="0 0 24 24" aria-hidden="true"><circle cx="7.5" cy="15.5" r="4.5"/><path d="M10.7 12.3 20 3M16 7l3 3M18.5 4.5l2 2"/></svg>',
+    link: '<svg class="ico ico-link" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.07 0l3-3a5 5 0 0 0-7.07-7.07l-1.5 1.5"/><path d="M14 11a5 5 0 0 0-7.07 0l-3 3a5 5 0 0 0 7.07 7.07l1.5-1.5"/></svg>',
+    sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+    moon: '<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>',
+    play: '<path d="M8 5l11 7-11 7z"/>',
+    pause: '<path d="M8 5v14M16 5v14"/>'
+  };
+
+  /* ---------- PostgreSQL highlighting. «word» marks a word with a glowing box. ---------- */
+  const KW = new Set(('SELECT FROM WHERE JOIN LEFT RIGHT INNER OUTER FULL CROSS ON AS AND OR NOT NULL IS CREATE TABLE INSERT INTO ' +
+    'VALUES PRIMARY KEY REFERENCES UNIQUE DEFAULT GROUP BY ORDER DESC ASC LIMIT OFFSET DELETE UPDATE SET DROP IF EXISTS UNION ALL ' +
+    'IN FOREIGN COUNT SUM DISTINCT HAVING CHECK LIKE ILIKE BETWEEN CASE WHEN THEN ELSE END CASCADE RESTRICT ALTER ADD COLUMN INDEX ' +
+    'GENERATED ALWAYS IDENTITY WITH START RETURNING CONFLICT DO NOTHING EXCLUDED OVERRIDING SYSTEM VALUE BEGIN COMMIT ROLLBACK ' +
+    'TRUNCATE RESTART TEMP NULLS FILTER COALESCE ACTION NO TRUE FALSE DISTINCT BIGINT INTEGER TEXT NUMERIC BOOLEAN DATE ' +
+    'TIMESTAMPTZ SETVAL MAX MIN AVG CURRENT_DATE NOW SHOW').split(' '));
+  const TABLES = new Set(['customers', 'orders', 'order_items', 'products', 'loyalty_cards', 'employees', 'comments']);
+  const FKCOL = { customer_id: 'customers', order_id: 'orders', product_id: 'products', referred_by: 'customers', manager_id: 'employees', parent_id: 'comments' };
+
+  function highlightSQL(src) {
+    const re = /«([^»]*)»|(--[^\n]*)|('(?:[^']|'')*'?)|\b(\d+(?:\.\d+)?)\b|\b([A-Za-z_][A-Za-z0-9_]*)\b/g;
+    let out = '';
+    let last = 0;
+    let m;
+    while ((m = re.exec(src))) {
+      out += esc(src.slice(last, m.index));
+      const tok = m[0];
+      let html;
+      if (m[1] !== undefined) html = '<mark class="hot">' + highlightSQL(m[1]) + '</mark>';
+      else if (m[2]) html = '<span class="com">' + esc(tok) + '</span>';
+      else if (m[3]) html = '<span class="str">' + esc(tok) + '</span>';
+      else if (m[4]) html = '<span class="num">' + tok + '</span>';
+      else {
+        const low = tok.toLowerCase();
+        if (TABLES.has(low)) html = '<span class="tn c-' + low + '">' + tok + '</span>';
+        else if (FKCOL[low]) html = '<span class="fkn c-' + FKCOL[low] + '">' + tok + '</span>';
+        else if (KW.has(tok.toUpperCase())) html = '<span class="kw">' + tok + '</span>';
+        else html = esc(tok);
+      }
+      out += html;
+      last = m.index + tok.length;
+    }
+    return out + esc(src.slice(last));
+  }
+
+  /* ---------- table cards ---------- */
+  const SCHEMA = D.SCHEMA || {};
+  function colMeta(table, name, extra) {
+    if (extra && extra[name]) return extra[name];
+    const sch = SCHEMA[table];
+    const m = sch && sch.find((c) => c.n === name);
+    return m || { n: name };
+  }
+  const rowKey = (table, r) => (table === 'order_items' ? `order_items:${r.order_id}-${r.product_id}` : `${table}:${r.id}`);
+  const MONEY = new Set(['total', 'unit_price', 'subtotal', 'price', 'paid']);
+  function fmt(col, v) {
+    if (v === null || v === undefined) return 'NULL';
+    if (MONEY.has(col) && v !== '' && !isNaN(v)) return money(v);
+    return v;
+  }
+  function rowHTML(table, cols, r, o = {}) {
+    const tds = cols.map((c) => {
+      const m = colMeta(table, c, o.extra);
+      const v = r[c];
+      const isNull = v === null || v === undefined;
+      const extra = o.cellClass ? (o.cellClass(r, c) || '') : '';
+      const cls = (m.pk && !m.fk ? 'pkcell ' : '') + (m.fk ? `fkcell c-${m.fk} ` : '') + (isNull ? 'null ' : '') + extra;
+      return `<td class="${cls}" data-col="${c}" data-v="${isNull ? '' : esc(v)}">${esc(fmt(c, v))}</td>`;
+    }).join('');
+    const attr = o.rowAttr ? o.rowAttr(r) : '';
+    return `<tr data-key="${o.key || rowKey(table, r)}" data-pk="${r.id == null ? '' : r.id}"${attr}>${tds}</tr>`;
+  }
+  function tableCard(table, cols, rows, o = {}) {
+    const head = cols.map((c) => {
+      const m = colMeta(table, c, o.extra);
+      const cls = (m.pk ? 'pk ' : '') + (m.fk ? 'fk c-' + m.fk : '');
+      const icons = (m.pk ? ICON.key : '') + (m.fk ? ICON.link : '');
+      return `<th class="${cls}" data-col="${c}"><span class="th-in">${icons}${esc(c)}</span></th>`;
+    }).join('');
+    const body = rows.map((r) => rowHTML(table, cols, r, o)).join('');
+    return `<div class="tcard t-${table} ${o.cls || ''}" data-table="${table}"${o.style ? ` style="${o.style}"` : ''}>` +
+      `<div class="tcard-head"><span class="tdot"></span><span>${esc(o.title || table)}</span>${o.badge ? `<span class="badge">${o.badge}</span>` : ''}</div>` +
+      `<table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
+  }
+
+  /* ---------- FK arrows ---------- */
+  const LINKS = {
+    'orders.customer_id': 'customers', 'loyalty_cards.customer_id': 'customers',
+    'order_items.order_id': 'orders', 'order_items.product_id': 'products', 'customers.referred_by': 'customers',
+    'employees.manager_id': 'employees', 'comments.parent_id': 'comments'
+  };
+  const SVGNS = 'http://www.w3.org/2000/svg';
+
+  function drawLinks(diagram, animate) {
+    const svg = $('svg.links', diagram);
+    if (!svg) return;
+    svg.innerHTML = '';
+    diagram._edges = [];
+    const base = diagram.getBoundingClientRect();
+    if (!base.width) return;
+    const s = state.scale || 1;
+    const specs = (diagram.dataset.links || '').split(',').filter(Boolean);
+    let i = 0;
+    specs.forEach((spec) => {
+      const [ct, col] = spec.split('.');
+      const tt = LINKS[spec];
+      const cc = $(`.tcard[data-table="${ct}"]:not(.is-hidden)`, diagram);
+      const tc = $(`.tcard[data-table="${tt}"]:not(.is-hidden)`, diagram);
+      if (!cc || !tc || !cc.offsetParent || !tc.offsetParent) return;
+      const cr = cc.getBoundingClientRect();
+      const trc = tc.getBoundingClientRect();
+      const self = cc === tc;
+      const leftward = !self && (trc.left + trc.width / 2) < (cr.left + cr.width / 2);
+      let k = 0;
+      $$(`tbody td[data-col="${col}"]`, cc).forEach((td) => {
+        const v = td.dataset.v;
+        const row = td.parentElement;
+        if (!v || row.classList.contains('ghost')) return;
+        const target = $(`tbody tr[data-pk="${v}"]`, tc);
+        if (!target) return;
+        const r1 = row.getBoundingClientRect();
+        const r2 = target.getBoundingClientRect();
+        const sy = (r1.top + r1.height / 2 - base.top) / s;
+        const ey = (r2.top + r2.height / 2 - base.top) / s;
+        let d;
+        let sx;
+        let dotY = sy;
+        if (self) {
+          const x = (cr.right - base.left) / s;
+          const dx = 48 + 26 * k;
+          k += 1;
+          sx = x;
+          d = `M${x},${sy} C${x + dx},${sy} ${x + dx},${ey} ${x + 3},${ey}`;
+        } else if (diagram.dataset.dir === 'rev') {
+          /* read from the "one" side: the arrow starts at the parent row and lands on each child */
+          const px = ((leftward ? trc.right : trc.left) - base.left) / s;
+          const cx = ((leftward ? cr.left : cr.right) - base.left) / s;
+          const dir = leftward ? 1 : -1;
+          const dx = Math.max(44, Math.abs(cx - px) * 0.5);
+          sx = px;
+          dotY = ey;
+          d = `M${px},${ey} C${px + dir * dx},${ey} ${cx - dir * dx},${sy} ${cx - dir * 3},${sy}`;
+        } else {
+          sx = ((leftward ? cr.left : cr.right) - base.left) / s;
+          const ex = ((leftward ? trc.right : trc.left) - base.left) / s;
+          const dir = leftward ? -1 : 1;
+          const dx = Math.max(44, Math.abs(ex - sx) * 0.5);
+          d = `M${sx},${sy} C${sx + dir * dx},${sy} ${ex - dir * dx},${ey} ${ex - dir * 3},${ey}`;
+        }
+        const p = document.createElementNS(SVGNS, 'path');
+        p.setAttribute('d', d);
+        p.setAttribute('class', 'link');
+        p.style.setProperty('--lc', `var(--c-${tt})`);
+        const dot = document.createElementNS(SVGNS, 'circle');
+        dot.setAttribute('cx', sx);
+        dot.setAttribute('cy', dotY);
+        dot.setAttribute('r', 4.5);
+        dot.setAttribute('class', 'link-dot');
+        dot.style.setProperty('--lc', `var(--c-${tt})`);
+        svg.appendChild(p);
+        svg.appendChild(dot);
+        diagram._edges.push([row.dataset.key, target.dataset.key, p, dot]);
+        if (animate && !reduced()) {
+          const len = p.getTotalLength();
+          const delay = Math.min(i * 55, 600);
+          p.style.strokeDasharray = len;
+          p.style.strokeDashoffset = len;
+          dot.style.opacity = 0;
+          p.getBoundingClientRect();
+          p.style.transition = `stroke-dashoffset .55s ease ${delay}ms`;
+          p.style.strokeDashoffset = 0;
+          dot.style.transition = `opacity .2s ease ${delay}ms`;
+          dot.style.opacity = '';
+          setTimeout(() => {
+            p.style.strokeDasharray = '';
+            p.style.strokeDashoffset = '';
+            p.style.transition = '';
+            p.setAttribute('marker-end', `url(#mk-${tt})`);
+          }, delay + 580);
+        } else {
+          p.setAttribute('marker-end', `url(#mk-${tt})`);
+        }
+        i += 1;
+      });
+    });
+    if (diagram._pick) highlight(diagram, diagram._pick);
+  }
+
+  function connected(edges, start) {
+    const tableOf = (k) => k.split(':')[0];
+    const seenTables = { [tableOf(start)]: 1 };
+    const nodes = { [start]: 1 };
+    const parts = [];
+    let frontier = [start];
+    while (frontier.length) {
+      const next = [];
+      const newTables = {};
+      frontier.forEach((k) => {
+        edges.forEach((e) => {
+          const other = e[0] === k ? e[1] : (e[1] === k ? e[0] : null);
+          if (!other || seenTables[tableOf(other)]) return;
+          parts.push(e[2], e[3]);
+          if (!nodes[other]) { nodes[other] = 1; next.push(other); newTables[tableOf(other)] = 1; }
+        });
+      });
+      Object.keys(newTables).forEach((t) => { seenTables[t] = 1; });
+      frontier = next;
+    }
+    return { nodes, parts };
+  }
+  function highlight(diagram, key, cls) {
+    const res = diagram._connect ? diagram._connect(key) : connected(diagram._edges || [], key);
+    diagram.classList.add('hovering');
+    $$('tbody tr[data-key]', diagram).forEach((tr) => {
+      const on = !!res.nodes[tr.dataset.key];
+      tr.classList.toggle('hl', on);
+      tr.classList.toggle('good-hl', cls === 'good-hl' && on);
+    });
+    (diagram._edges || []).forEach((e) => {
+      const on = res.parts.indexOf(e[2]) !== -1;
+      e[2].classList.toggle('hl', on);
+      e[3].classList.toggle('hl', on);
+    });
+  }
+  function clearHighlight(diagram) {
+    diagram.classList.remove('hovering');
+    $$('tbody tr.hl, tbody tr.good-hl', diagram).forEach((tr) => tr.classList.remove('hl', 'good-hl'));
+    $$('.link.hl, .link-dot.hl', diagram).forEach((p) => p.classList.remove('hl'));
+  }
+  function wireDiagram(diagram, onPick) {
+    if (diagram._wired) return;
+    diagram._wired = true;
+    const rest = () => { if (diagram._pick) highlight(diagram, diagram._pick); else clearHighlight(diagram); };
+    diagram.addEventListener('mouseover', (e) => {
+      const tr = e.target.closest('tbody tr[data-key]');
+      if (tr && diagram.contains(tr) && !tr.classList.contains('ghost')) highlight(diagram, tr.dataset.key);
+      else rest();
+    });
+    diagram.addEventListener('mouseleave', rest);
+    if (onPick) {
+      diagram.addEventListener('click', (e) => {
+        const tr = e.target.closest('tbody tr.clickable');
+        if (!tr || !diagram.contains(tr)) return;
+        diagram._pick = tr.dataset.key;
+        highlight(diagram, diagram._pick);
+        onPick(tr);
+      });
+    }
+  }
+
+  /* ---------- stage scaling, theme, fullscreen ---------- */
+  const fitHooks = [];
+  function fit() {
+    const host = $('#host');
+    if (!host) return;
+    const s = Math.min(host.clientWidth / 1600, host.clientHeight / 900);
+    state.scale = s;
+    document.documentElement.style.setProperty('--s', s);
+    fitHooks.forEach((f) => f());
+  }
+  const themeHooks = [];
+  function setTheme(t) {
+    document.documentElement.setAttribute('data-theme', t);
+    const ic = $('#themeIcon');
+    if (ic) ic.innerHTML = t === 'dark' ? ICON.sun : ICON.moon;
+    store.set('theme', t);
+    try { localStorage.setItem('dbr-theme', t); } catch (e) { /* storage can be blocked */ }
+    themeHooks.forEach((f) => f(t));
+  }
+  const toggleTheme = () => setTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  function toggleFullscreen() {
+    try {
+      if (document.fullscreenElement) document.exitFullscreen();
+      else if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(() => {});
+    } catch (e) { /* not allowed here */ }
+  }
+  const isTyping = (t) => !!(t && t.closest && t.closest('input, textarea, select, [contenteditable="true"]'));
+
+  document.addEventListener('keydown', (e) => {
+    if (isTyping(e.target) || e.metaKey || e.ctrlKey || e.altKey) return;
+    const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+    if (k === 't') toggleTheme();
+    else if (k === 'f') toggleFullscreen();
+  });
+  const tb = $('#themeBtn');
+  if (tb) tb.addEventListener('click', toggleTheme);
+  const fb = $('#fsBtn');
+  if (fb) fb.addEventListener('click', toggleFullscreen);
+  setTheme(((() => { try { return localStorage.getItem('dbr-theme'); } catch (e) { return null; } })() || store.get('theme', 'dark')) === 'light' ? 'light' : 'dark');
+  window.addEventListener('resize', fit);
+  document.addEventListener('fullscreenchange', () => setTimeout(fit, 60));
+  if (window.ResizeObserver && $('#host')) new ResizeObserver(() => fit()).observe($('#host'));
+
+  window.UI = {
+    $, $$, esc, later, reduced, store, money, ICON, fmt, isTyping,
+    highlightSQL, tableCard, rowHTML, colMeta, drawLinks, highlight, clearHighlight, wireDiagram,
+    fit, onFit: (f) => fitHooks.push(f), onTheme: (f) => themeHooks.push(f), get scale() { return state.scale; }, setTheme, toggleTheme, toggleFullscreen
+  };
+  fit();
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit);
+})();
+
+</script>
+<script>window.SAVED = {"small|INSERT INTO orders (customer_id)\nVALUES (999);":{"ok":false,"error":{"message":"insert or update on table \"orders\" violates foreign key constraint \"orders_customer_id_fkey\"","detail":"Key (customer_id)=(999) is not present in table \"customers\".","hint":""},"rolledBack":false},"small|INSERT INTO orders (customer_id)\nVALUES (3)\nRETURNING id;":{"ok":true,"results":[{"fields":["id"],"rows":[[1121]],"affected":1}]},"small|BEGIN;  -- we undo all of this at the end\nDROP TABLE orders CASCADE;\nCREATE TABLE orders (\n  id          bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,\n  customer_id bigint NOT NULL REFERENCES customers (id)\n);\n-- Which indexes did Postgres make for us?\nSELECT indexname FROM pg_indexes\nWHERE tablename = 'orders';\nROLLBACK;  -- the real table comes back":{"ok":true,"results":[{"fields":[],"rows":[],"affected":0},{"fields":[],"rows":[],"affected":0},{"fields":[],"rows":[],"affected":0},{"fields":["indexname"],"rows":[["orders_pkey"]],"affected":0},{"fields":[],"rows":[],"affected":0}]},"small|BEGIN;  -- we undo all of this at the end\nDROP TABLE orders CASCADE;\nCREATE TABLE orders (\n  id          bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,\n  customer_id bigint NOT NULL REFERENCES customers (id)\n);\nCREATE INDEX ON orders (customer_id);\nSELECT indexname FROM pg_indexes\nWHERE tablename = 'orders';\nROLLBACK;  -- the real table comes back":{"ok":true,"results":[{"fields":[],"rows":[],"affected":0},{"fields":[],"rows":[],"affected":0},{"fields":[],"rows":[],"affected":0},{"fields":[],"rows":[],"affected":0},{"fields":["indexname"],"rows":[["orders_pkey"],["orders_customer_id_idx"]],"affected":0},{"fields":[],"rows":[],"affected":0}]},"small|SELECT c.first_name, count(o.id) AS orders\nFROM customers c\nJOIN orders o ON o.customer_id = c.id\nGROUP BY c.id\nORDER BY c.id;":{"ok":true,"results":[{"fields":["first_name","orders"],"rows":[["Emma",3],["John",1],["Olivia",1],["James",1]],"affected":0}]},"small|SELECT c.first_name, count(o.id) AS orders\nFROM customers c\nLEFT JOIN orders o ON o.customer_id = c.id\nGROUP BY c.id\nORDER BY c.id;":{"ok":true,"results":[{"fields":["first_name","orders"],"rows":[["Emma",3],["John",1],["Olivia",1],["James",1],["Mia",0]],"affected":0}]},"small|BEGIN;  -- we undo all of this at the end\nDROP TABLE loyalty_cards;\nCREATE TABLE loyalty_cards (\n  id          bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,\n  customer_id bigint NOT NULL REFERENCES customers (id),\n  card_number text   NOT NULL UNIQUE\n);\n-- Emma gets a card, then a second one\nINSERT INTO loyalty_cards (customer_id, card_number)\nVALUES (1, '7700 0001 2648'), (1, '7700 0101 0001');\nSELECT customer_id, count(*) AS cards\nFROM loyalty_cards GROUP BY customer_id;\nROLLBACK;  -- the real table comes back":{"ok":true,"results":[{"fields":[],"rows":[],"affected":0},{"fields":[],"rows":[],"affected":0},{"fields":[],"rows":[],"affected":0},{"fields":[],"rows":[],"affected":2},{"fields":["customer_id","cards"],"rows":[[1,2]],"affected":0},{"fields":[],"rows":[],"affected":0}]},"small|BEGIN;  -- we undo all of this at the end\nDROP TABLE loyalty_cards;\nCREATE TABLE loyalty_cards (\n  id          bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,\n  customer_id bigint NOT NULL UNIQUE REFERENCES customers (id),\n  card_number text   NOT NULL UNIQUE\n);\n-- Emma gets a card, then a second one\nINSERT INTO loyalty_cards (customer_id, card_number)\nVALUES (1, '7700 0001 2648'), (1, '7700 0101 0001');\nSELECT customer_id, count(*) AS cards\nFROM loyalty_cards GROUP BY customer_id;\nROLLBACK;  -- the real table comes back":{"ok":false,"error":{"message":"duplicate key value violates unique constraint \"loyalty_cards_customer_id_key\"","detail":"Key (customer_id)=(1) already exists.","hint":""},"rolledBack":true},"small|-- Emma wants a second mouse in order 1026\nINSERT INTO order_items\n  (order_id, product_id, quantity, unit_price)\nVALUES (1026, 2, 1, 29.99);":{"ok":false,"error":{"message":"duplicate key value violates unique constraint \"order_items_pkey\"","detail":"Key (order_id, product_id)=(1026, 2) already exists.","hint":""},"rolledBack":false},"small|-- Same pair? Bump the quantity instead\nUPDATE order_items\nSET quantity = quantity + 1\nWHERE order_id = 1026 AND product_id = 2\nRETURNING order_id, product_id, quantity;":{"ok":true,"results":[{"fields":["order_id","product_id","quantity"],"rows":[[1026,2,2]],"affected":1}]}};</script>
+<script>
+/* The SQL behind the "Write it" and "Spot the mistake" beats.
+   «word» marks a word to highlight. `live` is what the playground runs;
+   when it is missing, the shown code runs as is. The build runs every
+   query against real PostgreSQL and saves the results for offline use. */
+window.SQLKEY = function (ds, sql) {
+  return ds + '|' + String(sql).replace(/\r/g, '').split('\n').map(function (l) { return l.replace(/\s+$/, ''); }).join('\n').trim();
+};
+window.LESSONS = (function () {
+  var strip = function (s) { return s.replace(/[«»]/g, ''); };
+  /* run a buggy table design inside a transaction, so the real table comes back */
+  var undoable = function (drop, body) {
+    return 'BEGIN;  -- we undo all of this at the end\n' + drop + '\n' + strip(body) + '\nROLLBACK;  -- the real table comes back';
+  };
+
+  var starters = {
+    'one-many': {
+      title: 'One to many',
+      sql: '-- orders.customer_id points at customers.id.\n' +
+        '-- Try LEFT JOIN, or add WHERE c.id = 1.\n' +
+        'SELECT c.first_name, o.id AS order_id, o.status\n' +
+        'FROM customers c\n' +
+        'JOIN orders o ON o.customer_id = c.id\n' +
+        'ORDER BY c.id, o.id;'
+    },
+    'one-one': {
+      title: 'One to one',
+      sql: '-- loyalty_cards.customer_id is a FK plus UNIQUE.\n' +
+        '-- LEFT JOIN keeps James, who has no card.\n' +
+        'SELECT c.first_name, lc.card_number, lc.tier\n' +
+        'FROM customers c\n' +
+        'LEFT JOIN loyalty_cards lc ON lc.customer_id = c.id\n' +
+        'ORDER BY c.id;'
+    },
+    'many-many': {
+      title: 'Many to many',
+      sql: '-- Two hops: orders, order_items, products.\n' +
+        'SELECT o.id AS order_id, p.name, oi.quantity\n' +
+        'FROM orders o\n' +
+        'JOIN order_items oi ON oi.order_id = o.id\n' +
+        'JOIN products p ON p.id = oi.product_id\n' +
+        'ORDER BY o.id, p.id;'
+    }
+  };
+
+  var ordersBug =
+    'CREATE TABLE orders (\n' +
+    '  id          bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,\n' +
+    '  «customer_id bigint NOT NULL REFERENCES customers (id)»\n' +
+    ');\n' +
+    '-- Which indexes did Postgres make for us?\n' +
+    'SELECT indexname FROM pg_indexes\n' +
+    "WHERE tablename = 'orders';";
+  var ordersFix =
+    'CREATE TABLE orders (\n' +
+    '  id          bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,\n' +
+    '  customer_id bigint NOT NULL REFERENCES customers (id)\n' +
+    ');\n' +
+    '«CREATE INDEX ON orders (customer_id);»\n' +
+    'SELECT indexname FROM pg_indexes\n' +
+    "WHERE tablename = 'orders';";
+
+  var cardsBug =
+    'CREATE TABLE loyalty_cards (\n' +
+    '  id          bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,\n' +
+    '  «customer_id bigint NOT NULL REFERENCES customers (id)»,\n' +
+    '  card_number text   NOT NULL UNIQUE\n' +
+    ');\n' +
+    '-- Emma gets a card, then a second one\n' +
+    'INSERT INTO loyalty_cards (customer_id, card_number)\n' +
+    "VALUES (1, '7700 0001 2648'), (1, '7700 0101 0001');\n" +
+    'SELECT customer_id, count(*) AS cards\n' +
+    'FROM loyalty_cards GROUP BY customer_id;';
+  var cardsFix =
+    'CREATE TABLE loyalty_cards (\n' +
+    '  id          bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,\n' +
+    '  customer_id bigint NOT NULL «UNIQUE» REFERENCES customers (id),\n' +
+    '  card_number text   NOT NULL UNIQUE\n' +
+    ');\n' +
+    '-- Emma gets a card, then a second one\n' +
+    'INSERT INTO loyalty_cards (customer_id, card_number)\n' +
+    "VALUES (1, '7700 0001 2648'), (1, '7700 0101 0001');\n" +
+    'SELECT customer_id, count(*) AS cards\n' +
+    'FROM loyalty_cards GROUP BY customer_id;';
+
+  var spots = {
+    keys: [
+      {
+        id: 'fk-999', tab: 'An order for customer 999',
+        code: 'INSERT INTO orders (customer_id)\nVALUES («999»);',
+        fixCode: 'INSERT INTO orders (customer_id)\nVALUES («3»)\nRETURNING id;',
+        why: 'There is no customer 999, so the FK says no. Every arrow has to land on a real row.'
+      },
+      {
+        id: 'fk-index', tab: 'The missing index',
+        code: ordersBug, live: undoable('DROP TABLE orders CASCADE;', ordersBug),
+        fixCode: ordersFix, fixLive: undoable('DROP TABLE orders CASCADE;', ordersFix),
+        why: 'Postgres indexes PRIMARY KEY and UNIQUE for you. Never a foreign key. Add that index yourself.'
+      }
+    ],
+    'one-many': [
+      {
+        id: 'om-left', tab: 'Orders per customer',
+        code: 'SELECT c.first_name, count(o.id) AS orders\nFROM customers c\n«JOIN» orders o ON o.customer_id = c.id\nGROUP BY c.id\nORDER BY c.id;',
+        fixCode: 'SELECT c.first_name, count(o.id) AS orders\nFROM customers c\n«LEFT JOIN» orders o ON o.customer_id = c.id\nGROUP BY c.id\nORDER BY c.id;',
+        why: 'JOIN keeps only matches. Mia has no orders, so she vanished. LEFT JOIN keeps her with 0.'
+      }
+    ],
+    'one-one': [
+      {
+        id: 'oo-unique', tab: 'Two cards for Emma',
+        code: cardsBug, live: undoable('DROP TABLE loyalty_cards;', cardsBug),
+        fixCode: cardsFix, fixLive: undoable('DROP TABLE loyalty_cards;', cardsFix),
+        why: 'No UNIQUE on the FK, so one to one quietly became one to many. One word fixes it.'
+      }
+    ],
+    'many-many': [
+      {
+        id: 'mm-dup', tab: 'A second mouse',
+        code: '-- Emma wants a second mouse in order 1026\nINSERT INTO order_items\n  (order_id, product_id, quantity, unit_price)\nVALUES («1026, 2», 1, 29.99);',
+        fixCode: '-- Same pair? Bump the quantity instead\n«UPDATE» order_items\nSET «quantity = quantity + 1»\nWHERE order_id = 1026 AND product_id = 2\nRETURNING order_id, product_id, quantity;',
+        why: 'The pair (order_id, product_id) is the key, so it can\'t repeat. Change the quantity instead.'
+      }
+    ]
+  };
+  Object.keys(spots).forEach(function (k) {
+    spots[k].forEach(function (b) {
+      if (!b.live) b.live = strip(b.code);
+      if (!b.fixLive) b.fixLive = strip(b.fixCode);
+    });
+  });
+  return { starters: starters, spots: spots, strip: strip };
+})();
+
+</script>
+<script>window.TABS_PAGE = 'story';</script>
+<script>
+/* The three pages (story, playground, game) each live in their own named tab.
+   Hold Space and press P, G or S to jump between them. Tabs talk over a
+   BroadcastChannel, so a page can hand another page a command (like a query
+   to load) or ask it to come to the front. */
+(function () {
+  'use strict';
+  var PAGE = window.TABS_PAGE;
+  var PAGES = {
+    story: { file: 'db-relations-story.html', name: 'dbrel-story', label: 'Story' },
+    playground: { file: 'db-relations-playground.html', name: 'dbrel-playground', label: 'Playground' },
+    game: { file: 'db-relations-game.html', name: 'dbrel-game', label: 'Game' }
+  };
+  var KEYS = { p: 'playground', g: 'game', s: 'story' };
+  var ALIVE_MS = 90000;
+  /* a fixed tab name, so window.open can find this tab again instead of opening a copy */
+  try { window.name = PAGES[PAGE].name; } catch (e) { /* ignore */ }
+
+  /* ---------- messages between tabs ---------- */
+  var me = Math.random().toString(36).slice(2);
+  var seq = 0;
+  var seen = {};
+  var handlers = [];
+  var cmdHandlers = [];
+  var pendingCmds = [];
+  var alive = {};
+  var ch = null;
+  try { ch = new BroadcastChannel('dbrel-tabs'); } catch (e) { ch = null; }
+
+  function send(msg, win) {
+    seq += 1;
+    var m = { id: me + ':' + seq, from: me, page: PAGE };
+    for (var k in msg) m[k] = msg[k];
+    if (ch) { try { ch.postMessage(m); } catch (e) { /* closed */ } }
+    if (win) { try { win.postMessage({ __dbrelTabs: m }, '*'); } catch (e) { /* closed */ } }
+  }
+  function runCmd(cmd) {
+    if (!cmdHandlers.length) { pendingCmds.push(cmd); return; }
+    cmdHandlers.forEach(function (h) { try { h(cmd); } catch (e) { console.error(e); } });
+  }
+  function receive(m) {
+    if (!m || m.from === me || seen[m.id]) return;
+    seen[m.id] = 1;
+    if (m.type === 'bye') delete alive[m.page];
+    else if (m.page) alive[m.page] = Date.now();
+    if (m.type === 'hello') send({ type: 'here' });
+    if (m.to && m.to !== PAGE) return;
+    if (m.type === 'focus') { try { window.focus(); } catch (e) { /* ignore */ } }
+    if (m.type === 'cmd' && m.cmd) runCmd(m.cmd);
+    handlers.forEach(function (h) { try { h(m); } catch (e) { console.error(e); } });
+  }
+  if (ch) ch.onmessage = function (e) { receive(e.data); };
+  window.addEventListener('message', function (e) { if (e.data && e.data.__dbrelTabs) receive(e.data.__dbrelTabs); });
+  send({ type: 'hello' });
+  setInterval(function () { send({ type: 'here' }); }, 20000);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) send({ type: 'here' }); });
+  window.addEventListener('pagehide', function () { send({ type: 'bye' }); });
+
+  /* a command can also arrive in the address, when this tab was just opened for it */
+  (function () {
+    var m = /^#cmd=(.*)$/.exec(location.hash || '');
+    if (!m) return;
+    try { pendingCmds.push(JSON.parse(decodeURIComponent(m[1]))); } catch (e) { /* bad link */ }
+    try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* file urls */ }
+  })();
+
+  /* ---------- a small note in the corner ---------- */
+  var noteTimer = null;
+  function note(text) {
+    var el = document.getElementById('tabsNote');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'tabsNote';
+      el.setAttribute('role', 'status');
+      el.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:9999;padding:10px 18px;border-radius:12px;' +
+        'font:600 17px/1.3 system-ui,sans-serif;background:rgba(20,22,30,.94);color:#fff;box-shadow:0 10px 30px -10px rgba(0,0,0,.6);pointer-events:none';
+      document.body.appendChild(el);
+    }
+    el.textContent = text;
+    el.hidden = false;
+    clearTimeout(noteTimer);
+    noteTimer = setTimeout(function () { el.hidden = true; }, 2800);
+  }
+
+  /* ---------- open a page, or bring its tab to the front ---------- */
+  function go(page, cmd) {
+    var P = PAGES[page];
+    if (!P) return;
+    if (page === PAGE) { if (cmd) runCmd(cmd); return; }
+    var w = null;
+    try { w = window.open('', P.name); } catch (e) { w = null; }
+    if (!w) { note('Allow pop-ups for this file, then try again.'); return; }
+    var fresh = false;
+    try { fresh = w.location.href === 'about:blank'; } catch (e) { fresh = false; }
+    if (!fresh) {
+      /* the tab is already there: bring it forward and hand it the command */
+      try { w.focus(); } catch (e) { /* ignore */ }
+      if (cmd) send({ type: 'cmd', to: page, cmd: cmd }, w);
+      return;
+    }
+    var url = new URL(P.file, location.href).href + (cmd ? '#cmd=' + encodeURIComponent(JSON.stringify(cmd)) : '');
+    var load = function () { try { w.location.replace(url); w.focus(); } catch (e) { /* ignore */ } };
+    var last = alive[page];
+    if (!last || Date.now() - last > ALIVE_MS) { load(); return; }
+    /* it may be open in a tab this one can't reach by name: check before making a second copy */
+    var answered = false;
+    var listen = function (m) { if (m.type === 'here' && m.page === page) answered = true; };
+    handlers.push(listen);
+    send({ type: 'hello' });
+    setTimeout(function () {
+      handlers.splice(handlers.indexOf(listen), 1);
+      if (!answered) { load(); return; }
+      try { w.close(); } catch (e) { /* ignore */ }
+      send({ type: 'focus', to: page });
+      if (cmd) send({ type: 'cmd', to: page, cmd: cmd });
+      note(P.label + ' is already open in another tab.');
+    }, 160);
+  }
+
+  /* ---------- Space + P / G / S ---------- */
+  var TEXT_INPUT = /^(text|search|email|url|tel|password|number|date|datetime-local|month|time|week)$/i;
+  function typing(t) {
+    if (!t || !t.closest) return false;
+    if (t.closest('textarea, select, [contenteditable=""], [contenteditable="true"]')) return true;
+    return t.tagName === 'INPUT' && TEXT_INPUT.test(t.type || 'text');
+  }
+  var shortcut = function (page) { go(page); };
+  var held = false;
+  var used = false;
+  var heldTarget = null;
+  var heldShift = false;
+  var replaying = false;
+  window.addEventListener('keydown', function (e) {
+    if (replaying || e.ctrlKey || e.metaKey || e.altKey || typing(e.target)) return;
+    if (e.key === ' ' || e.code === 'Space') {
+      /* Space waits for its key-up: alone it does its usual job, with P, G or S it switches tabs */
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      if (e.repeat || held) return;
+      held = true; used = false; heldTarget = e.target; heldShift = e.shiftKey;
+      return;
+    }
+    if (!held) return;
+    var page = KEYS[(e.key || '').toLowerCase()];
+    if (!page) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    used = true;
+    if (page === PAGE) { note("You're on the " + PAGES[page].label + '.'); return; }
+    shortcut(page);
+  }, true);
+  window.addEventListener('keyup', function (e) {
+    if (e.key !== ' ' && e.code !== 'Space') return;
+    if (!held) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    held = false;
+    if (!used) replay(heldTarget, heldShift);
+  }, true);
+  window.addEventListener('blur', function () { held = false; });
+  /* hand the plain Space press back to the page, exactly as it would have arrived */
+  function replay(t, shift) {
+    var target = t && t.isConnected ? t : document.body;
+    var ev = new KeyboardEvent('keydown', { key: ' ', code: 'Space', shiftKey: shift, bubbles: true, cancelable: true });
+    var open;
+    replaying = true;
+    try { open = target.dispatchEvent(ev); } finally { replaying = false; }
+    if (open && target.matches && target.matches('button, [role="button"], summary, input[type="checkbox"], input[type="radio"]') && !target.disabled) target.click();
+  }
+
+  /* links between the pages (the tabs in the header) */
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[data-page]');
+    if (!a || e.ctrlKey || e.metaKey || e.shiftKey || e.button) return;
+    e.preventDefault();
+    if (a.dataset.page !== PAGE) shortcut(a.dataset.page);
+  });
+
+  window.Tabs = {
+    page: PAGE,
+    go: go,
+    send: send,
+    note: note,
+    on: function (h) { handlers.push(h); },
+    onCommand: function (h) {
+      cmdHandlers.push(h);
+      var list = pendingCmds.splice(0);
+      if (list.length) setTimeout(function () { list.forEach(runCmd); }, 0);
+    },
+    setShortcut: function (fn) { shortcut = fn; }
+  };
+})();
+
+</script>
+
+<script>
+(() => {
+  'use strict';
+  const D = window.APPDATA;
+  const U = window.UI;
+  const L = window.LESSONS;
+  const KEY = window.SQLKEY;
+  const SAVED = window.SAVED || {};
+  const { $, $$, esc, money, tableCard, highlightSQL, drawLinks, highlight, wireDiagram } = U;
+  const SL = D.SLICE;
+  const NEXT = D.NEXT_IDS;
+  const NEW_PHONE = D.DEMO_PHONE;
+  const cust = (id) => SL.customers.find((c) => c.id === id);
+  const prod = (id) => SL.products.find((p) => p.id === id);
+  const fullName = (c) => `${c.first_name} ${c.last_name}`;
+  const ordersOf = (cid) => SL.orders.filter((o) => o.customer_id === cid);
+  const itemsOf = (oid) => SL.order_items.filter((x) => x.order_id === oid);
+  const ordersWith = (pid) => SL.order_items.filter((x) => x.product_id === pid).map((x) => x.order_id);
+  const listJoin = (a) => (a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1]);
+  const S = { step: 0, build: 0, back: null, overlay: null };
+  const storyEl = $('#mode-story');
+
+  /* FAST is true while Back silently rebuilds a slide. Timers keep the value
+     they were scheduled with, so a rebuilt slide never replays its animations. */
+  let FAST = false;
+  const later = (ms, fn) => {
+    const fast = FAST;
+    U.later(fast ? 0 : ms, () => { const was = FAST; FAST = fast; try { fn(); } finally { FAST = was; } });
+  };
+  const anim = () => !FAST;
+
+  /* ---------- small builders ---------- */
+  const pick = (table, cols) => SL[table].map((r) => {
+    const o = {};
+    cols.forEach((c) => { o[c] = r[c]; });
+    if (r.id != null) o.id = r.id;
+    return o;
+  });
+  const code = (sql, size) => `<pre class="code ${size || ''}">${highlightSQL(sql)}</pre>`;
+  const marked = (sql, mark, size) => `<pre class="code ${size || ''}">${highlightSQL(sql).replace(/<mark class="hot">/g, `<mark class="hot ${mark}">`)}</pre>`;
+  /* the same code written two ways: ids as bigint identity, or as uuid */
+  const idCode = (big, uuid, size) => '<div class="idswitch">' +
+    '<div class="idopt" role="group" aria-label="How the ids are made"><button class="idbtn" data-opt="bigint" aria-pressed="true">bigint</button><button class="idbtn" data-opt="uuid" aria-pressed="false">uuid</button></div>' +
+    `<div class="idpane" data-pane="bigint">${code(big, size)}</div><div class="idpane" data-pane="uuid" hidden>${code(uuid, size)}</div></div>`;
+  const diagram = (links, inner, style, dir) => `<div class="diagram" data-links="${links}"${dir ? ` data-dir="${dir}"` : ''}${style ? ` style="${style}"` : ''}>${inner}<svg class="links" aria-hidden="true"></svg></div>`;
+  const gap = (w) => `<div style="width:${w}px;flex:none"></div>`;
+  const vis = (show, gone) => (show != null ? ` data-show="${show}"` : '') + (gone != null ? ` data-gone="${gone}"` : '');
+  const cap = (html, show, gone, cls) => `<p class="cap ${cls || ''}"${vis(show, gone)}>${html}</p>`;
+  const pgErr = (msg, detail) => `<span class="pgerr">ERROR:  ${esc(msg)}${detail ? `\n<span class="d">DETAIL:  ${esc(detail)}</span>` : ''}</span>`;
+  const shake = (elm) => { if (!anim()) return; elm.classList.remove('shake'); void elm.offsetWidth; elm.classList.add('shake'); };
+  function rtable(cols, rows, rowCls) {
+    const head = cols.map((c) => `<th>${esc(c)}</th>`).join('');
+    const body = rows.map((r, i) => {
+      const cls = rowCls ? rowCls(r, i) : '';
+      return `<tr${cls ? ` class="${cls}"` : ''}>${r.map((v) => (v === null ? '<td class="null">NULL</td>' : `<td>${esc(v)}</td>`)).join('')}</tr>`;
+    }).join('');
+    return `<table class="rtable"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
+  }
+  function sheetHTML() {
+    const rows = SL.orders.map((o) => {
+      const c = cust(o.customer_id);
+      return `<tr data-cid="${c.id}"><td>${o.id}</td><td>${esc(fullName(c))}</td><td class="phone">${esc(c.phone)}</td><td>${money(o.total)}</td></tr>`;
+    }).join('');
+    return '<div class="sheet"><div class="sheet-bar"><span class="sheet-dots"><i></i><i></i><i></i></span>orders_sheet.xlsx</div>' +
+      '<table><thead><tr><th class="sh-o">order_id</th><th class="sh-c">customer</th><th class="sh-c">phone</th><th class="sh-o">total</th></tr></thead>' +
+      `<tbody>${rows}</tbody></table></div>`;
+  }
+  const drawAndWire = (el, onPick, delay) => later(delay == null ? 380 : delay, () => {
+    $$('.diagram', el).forEach((d) => { drawLinks(d, anim()); wireDiagram(d, onPick); });
+  });
+
+  /* ---------- "In real life": people and things as bubbles, no SQL words ---------- */
+  function people(w, h, nodes, edges) {
+    const N = {};
+    nodes.forEach((n) => { N[n.id] = n; });
+    const lines = edges.map((e) => {
+      const A = N[e.a];
+      const B = N[e.b];
+      const ra = (A.r || 50) + 6;
+      const rb = (B.r || 50) + 6;
+      const dx = B.x - A.x;
+      const dy = B.y - A.y;
+      const len = Math.hypot(dx, dy) || 1;
+      const nx = -dy / len;
+      const ny = dx / len;
+      const bend = e.bend || 0;
+      const cx = (A.x + B.x) / 2 + nx * bend;
+      const cy = (A.y + B.y) / 2 + ny * bend;
+      const toward = (P, r, tx, ty) => { const ex = tx - P.x; const ey = ty - P.y; const l = Math.hypot(ex, ey) || 1; return [P.x + ex / l * r, P.y + ey / l * r]; };
+      const [x1, y1] = toward(A, ra, cx, cy);
+      const [x2, y2] = toward(B, rb, cx, cy);
+      const bad = /\bbad\b/.test(e.cls || '');
+      const d = bend ? `M${x1},${y1} Q${cx},${cy} ${x2},${y2}` : `M${x1},${y1} L${x2},${y2}`;
+      const lx = bend ? (x1 + 2 * cx + x2) / 4 : (x1 + x2) / 2;
+      const ly = bend ? (y1 + 2 * cy + y2) / 4 : (y1 + y2) / 2;
+      const lab = e.label ? `<text x="${lx}" y="${ly - 12}">${esc(e.label)}</text>` : '';
+      const x = e.x ? `<text class="x" x="${lx}" y="${ly + 12}">✕</text>` : '';
+      return `<g class="pe ${e.cls || ''}"${vis(e.show, e.gone)} style="--lc:${e.color || 'var(--muted)'}"><path d="${d}"${bad ? ' class="nodraw"' : ' pathLength="1"'}/>${lab}${x}</g>`;
+    }).join('');
+    const bubbles = nodes.map((n) => {
+      const r = n.r || 50;
+      const shape = n.box ? `<rect x="${-n.w / 2}" y="${-r}" width="${n.w}" height="${r * 2}" rx="20"/>` : `<circle r="${r}"/>`;
+      return `<g class="pn ${n.cls || ''}${n.box ? ' box' : ''}"${vis(n.show, n.gone)} style="--pc:${n.color || 'var(--border-2)'}"><g transform="translate(${n.x},${n.y})">${shape}<text class="pn-e">${n.emoji}</text>${n.lp ? `<text class="pn-l l${n.lp}" x="${((n.w ? n.w / 2 : r) + 16) * (n.lp === 'l' ? -1 : 1)}" y="9">${esc(n.label)}</text>` : `<text class="pn-l" y="${r + 32}">${esc(n.label)}</text>`}</g></g>`;
+    }).join('');
+    return `<svg class="people" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" aria-hidden="true">${lines}${bubbles}</svg>`;
+  }
+  const lifeBody = (svg, caps) => `<div class="people-wrap">${svg}<div class="capbar">${caps}</div></div>`;
+  const BLUE = 'var(--c-customers)';
+  const YELLOW = 'var(--c-loyalty_cards)';
+  const PURPLE = 'var(--c-order_items)';
+
+  /* many-to-many tries */
+  function renderTry(el, n) {
+    $$('[data-try]', el).forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.try === n)));
+    const oRows = SL.orders.map((o) => ({ id: o.id, total: o.total, product_id: itemsOf(o.id).map((x) => x.product_id).join(', ') }));
+    const pRows = SL.products.map((p) => ({ id: p.id, name: p.name, order_id: ordersWith(p.id).join(', ') }));
+    const bad = (r, c) => ((c === 'product_id' || c === 'order_id') && String(r[c]).includes(',') ? 'cell-bad' : '');
+    const pop = n && anim() ? 'toast-pop' : '';
+    $('.try-left', el).innerHTML = tableCard('orders', n === 1 ? ['id', 'total', 'product_id'] : ['id', 'total'], oRows,
+      { extra: { product_id: { n: 'product_id', fk: 'products' } }, cellClass: bad, cls: n === 1 ? pop : '' });
+    $('.try-right', el).innerHTML = tableCard('products', n === 2 ? ['id', 'name', 'order_id'] : ['id', 'name'], pRows,
+      { extra: { order_id: { n: 'order_id', fk: 'orders' } }, cellClass: bad, cls: n === 2 ? pop : '' });
+    const first = SL.orders[0];
+    const mo = ordersWith(2);
+    const capEl = $('.try-cap', el);
+    if (n === 1) capEl.innerHTML = `<div class="callout bad ${pop}">❌ Order ${first.id} has ${itemsOf(first.id).length} products. One cell, one value.</div>`;
+    else if (n === 2) capEl.innerHTML = `<div class="callout bad ${pop}">❌ The mouse is in ${mo.length} orders. Same problem.</div>`;
+    else capEl.innerHTML = '<p class="cap muted">Where would you put it? 👆</p>';
+  }
+
+  /* a table that points at itself: follow the chain up, and one level down */
+  const selfConnect = (rows, fk, table) => (d) => (key) => {
+    const id = +key.split(':')[1];
+    const nodes = { [key]: 1 };
+    let r = rows.find((x) => x.id === id);
+    while (r && r[fk]) { nodes[`${table}:${r[fk]}`] = 1; r = rows.find((x) => x.id === r[fk]); }
+    rows.filter((x) => x[fk] === id).forEach((x) => { nodes[`${table}:${x.id}`] = 1; });
+    const parts = [];
+    (d._edges || []).forEach((e) => { if (nodes[e[0]] && nodes[e[1]]) parts.push(e[2], e[3]); });
+    return { nodes, parts };
+  };
+  const EMP = [{ id: 1, name: 'Grace', manager_id: null }, { id: 2, name: 'Oliver', manager_id: 1 }, { id: 3, name: 'Sophie', manager_id: 1 }, { id: 4, name: 'Henry', manager_id: 2 }];
+  const COM = [{ id: 1, body: 'Great post!', parent_id: null }, { id: 2, body: 'Thanks!', parent_id: 1 }, { id: 3, body: 'Agreed', parent_id: 1 }, { id: 4, body: 'Same here', parent_id: 3 }];
+  function chainText(rows, fk, label, id) {
+    const out = [];
+    let r = rows.find((x) => x.id === id);
+    while (r) { out.push(r[label]); r = r[fk] ? rows.find((x) => x.id === r[fk]) : null; }
+    return out.length > 1 ? out.map(esc).join(' → ') : `${esc(out[0])} is at the top: ${fk} is NULL.`;
+  }
+
+  /* trick card (kept as an extra after the session) */
+  const PAIRS = [
+    { a: 'customer', b: 'order', as: 'customers', bs: 'orders' },
+    { a: 'customer', b: 'loyalty card', as: 'customers', bs: 'loyalty cards' },
+    { a: 'order', b: 'product', as: 'orders', bs: 'products', junction: 'order_items' }
+  ];
+  const plural = (w) => {
+    w = w.trim();
+    if (!w) return w;
+    if (/(s|sh|ch|x|z)$/i.test(w)) return w + 'es';
+    if (/[^aeiou]y$/i.test(w)) return w.slice(0, -1) + 'ies';
+    return w + 's';
+  };
+  const slug = (w) => w.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'thing';
+  function trickInit(el) {
+    const st = { pair: 0, a1: null, a2: null };
+    const own = $('.own-inputs', el);
+    const cur = () => {
+      if (st.pair < 3) return PAIRS[st.pair];
+      const a = $('#ownA', el).value || 'A';
+      const b = $('#ownB', el).value || 'B';
+      return { a, b, as: plural(a), bs: plural(b) };
+    };
+    function render() {
+      const p = cur();
+      $$('[data-pair]', el).forEach((x) => x.setAttribute('aria-pressed', String(+x.dataset.pair === st.pair)));
+      own.hidden = st.pair !== 3;
+      $('#tq1', el).textContent = `Can one ${p.a} have many ${p.bs}?`;
+      $('#tq2', el).textContent = `Can one ${p.b} have many ${p.as}?`;
+      $$('.yn', el).forEach((g) => {
+        const v = g.dataset.q === '1' ? st.a1 : st.a2;
+        $$('.btn', g).forEach((b) => b.setAttribute('aria-pressed', String(v !== null && (b.dataset.v === 'yes') === v)));
+      });
+      const res = $('#tres', el);
+      const tt = $('#ttable', el);
+      $$('tbody tr', tt).forEach((r) => r.classList.remove('picked'));
+      tt.classList.remove('has-pick');
+      if (st.a1 === null || st.a2 === null) { res.innerHTML = '<span class="r-empty">Answer both questions. 👆</span>'; return; }
+      const A = slug(p.as);
+      const B = slug(p.bs);
+      const a = slug(p.a);
+      const b = slug(p.b);
+      let row;
+      let html;
+      if (st.a1 && !st.a2) { row = 'yn'; html = `<div class="r-title">One to many</div><div class="r-fk">FK on the many side: ${B}.${a}_id → ${A}.id</div>`; }
+      else if (!st.a1 && st.a2) { row = 'yn'; html = `<div class="r-title">One to many, just flipped</div><div class="r-fk">FK on the many side: ${A}.${b}_id → ${B}.id</div>`; }
+      else if (!st.a1 && !st.a2) { row = 'nn'; html = `<div class="r-title">One to one</div><div class="r-fk">${B}.${a}_id → ${A}.id, plus UNIQUE</div>`; }
+      else { row = 'yy'; html = `<div class="r-title">Many to many</div><div class="r-fk">New table: ${p.junction || a + '_' + B} (${a}_id, ${b}_id)</div>`; }
+      res.innerHTML = html;
+      res.classList.remove('toast-pop'); void res.offsetWidth; res.classList.add('toast-pop');
+      tt.classList.add('has-pick');
+      $(`tr[data-r="${row}"]`, tt).classList.add('picked');
+    }
+    $$('[data-pair]', el).forEach((b) => b.addEventListener('click', () => { st.pair = +b.dataset.pair; st.a1 = null; st.a2 = null; render(); }));
+    $$('.yn .btn', el).forEach((b) => b.addEventListener('click', () => {
+      const v = b.dataset.v === 'yes';
+      if (b.parentElement.dataset.q === '1') st.a1 = v; else st.a2 = v;
+      render();
+    }));
+    $$('.own-inputs input', el).forEach((i) => i.addEventListener('input', render));
+    render();
+  }
+
+  const GOTCHAS = [
+    ['🗂️', 'Does Postgres index my foreign keys?', "No. Primary keys and UNIQUE columns get an index for free. Foreign keys don't, so add one: <code>CREATE INDEX ON orders (customer_id);</code>"],
+    ['🕳️', 'Why do ids skip numbers?', 'Postgres never hands out the same id twice. A failed insert or a rollback still uses one up. Gaps are normal.'],
+    ['📥', 'I loaded rows with my own ids. Now inserts fail?', "The id counter didn't move, so Postgres hands out 1 again. Bump it with <code>setval()</code> or <code>ALTER TABLE ... RESTART WITH</code>."],
+    ['👪', 'Customer or order: which goes in first?', 'The parent. Insert the customer, get the new id back with <code>RETURNING id</code>, then use it in the order.'],
+    ['✖️', 'My JOIN returned more rows than I expected.', 'Joining from the one side repeats it once per match. Emma shows up 3 times. Group or count before you add things up.'],
+    ['🗑️', 'What happens when I delete a customer?', 'You choose with ON DELETE. The default blocks it. <code>CASCADE</code> deletes the children too. <code>SET NULL</code> clears the link.'],
+    ['🧩', 'Can a UNIQUE column hold two NULLs?', 'Yes. In Postgres, NULL never equals NULL. Add NOT NULL, or use <code>UNIQUE NULLS NOT DISTINCT</code> on Postgres 15 and up.'],
+    ['🆔', 'bigint or uuid for ids?', 'bigint identity is small, fast and easy to read. uuid with <code>gen_random_uuid()</code> suits ids that are public or made on many servers.'],
+    ['📚', 'Tutorials use SERIAL. Should I?', 'It still works, but <code>GENERATED ALWAYS AS IDENTITY</code> is the modern standard, and it stops people typing their own ids.']
+  ];
+
+  const PK_LINE = 'A column that is unique for every row, like a roll number, so you can point at exactly one row.';
+  const FK_LINE = "A column that stores another table's primary key, so this row can point at that row.";
+  const noop = (label) => ({ label, run() {} });
+  const ART = {
+    '11': '<svg viewBox="0 0 150 56"><line class="l" x1="38" y1="28" x2="112" y2="28"/><circle class="n" cx="28" cy="28" r="11"/><circle class="n" cx="122" cy="28" r="11"/></svg>',
+    '1N': '<svg viewBox="0 0 150 56"><path class="l" d="M38 28 L112 9 M38 28 L112 28 M38 28 L112 47"/><circle class="n" cx="28" cy="28" r="11"/><circle class="n" cx="122" cy="9" r="7"/><circle class="n" cx="122" cy="28" r="7"/><circle class="n" cx="122" cy="47" r="7"/></svg>',
+    MN: '<svg viewBox="0 0 150 56"><path class="l" d="M36 9 L114 28 M36 9 L114 47 M36 28 L114 9 M36 47 L114 28 M36 47 L114 9"/><circle class="n" cx="28" cy="9" r="7"/><circle class="n" cx="28" cy="28" r="7"/><circle class="n" cx="28" cy="47" r="7"/><circle class="n" cx="122" cy="9" r="7"/><circle class="n" cx="122" cy="28" r="7"/><circle class="n" cx="122" cy="47" r="7"/></svg>'
+  };
+
+  /* ---------- saved PostgreSQL results (made by the build from real Postgres) ---------- */
+  function savedFor(sql) { return SAVED[KEY('small', sql)] || null; }
+  function resultHTML(r, cls) {
+    if (!r) return `<div class="res ${cls || ''}"><span class="side-note">Run it in the playground to see this one.</span></div>`;
+    if (!r.ok) return `<div class="res ${cls || ''}">${pgErr(r.error.message, r.error.detail)}</div>`;
+    const sel = r.results.filter((x) => x.fields.length);
+    const last = sel[sel.length - 1];
+    if (last) return `<div class="res ${cls || ''}">${rtable(last.fields, last.rows.map((row) => row.map((v) => (v === null ? null : String(v)))))}</div>`;
+    return `<div class="res ${cls || ''}"><div class="tagline">✓ ${esc(r.tag || 'Done')}</div></div>`;
+  }
+
+  /* ---------- Spot the mistake: one planted bug per query ---------- */
+  function spotStep(o) {
+    const bugs = L.spots[o.lesson];
+    const plan = [];
+    bugs.forEach((b, i) => {
+      if (i) plan.push({ i, kind: 'tab', label: `Bug ${i + 1}: ${b.tab}` });
+      plan.push({ i, kind: 'run', label: 'Run it' });
+      plan.push({ i, kind: 'reveal', label: 'Reveal the fix' });
+    });
+    const stateAt = (n) => {
+      const st = bugs.map(() => 0);
+      let cur = 0;
+      for (let k = 0; k < n; k += 1) {
+        const p = plan[k];
+        cur = p.i;
+        if (p.kind === 'run') st[p.i] = Math.max(st[p.i], 1);
+        if (p.kind === 'reveal') st[p.i] = 2;
+      }
+      return { st, cur };
+    };
+    function render(el, n, view) {
+      const { st, cur } = stateAt(n);
+      const i = view != null ? view : cur;
+      el._spotI = i;
+      const b = bugs[i];
+      const stage = st[i];
+      $$('[data-tab]', el).forEach((t) => {
+        const ti = +t.dataset.tab;
+        t.setAttribute('aria-pressed', String(ti === i));
+      });
+      const before = savedFor(b.live);
+      const after = savedFor(b.fixLive);
+      const left = stage === 2
+        ? `<div class="lbl fix">✅ The fix</div>${marked(b.fixCode, 'fixmark')}`
+        : `<div class="lbl">🐞 The query</div>${code(L.strip(b.code))}`;
+      const right = stage === 0
+        ? '<div class="ph">What will Postgres say? 🤔</div>'
+        : resultHTML(before, stage === 2 ? 'before' : 'toast-pop') + (stage === 2 ? resultHTML(after, 'toast-pop') + `<div class="why toast-pop">${esc(b.why)}</div>` : '');
+      $('.spot-area', el).innerHTML = `<div class="spot"><div class="col" style="gap:0">${left}
+        <div class="spot-actions"><button class="btn primary" data-act="run"${stage ? ' disabled' : ''}>▶ Run it</button>
+        <button class="btn" data-act="reveal"${stage === 2 || stage === 0 ? ' disabled' : ''}>💡 Reveal</button>
+        <button class="btn ghost" data-act="live">🧪 Try it live <kbd>Space+P</kbd></button></div></div>
+        <div class="out">${stage === 2 ? '<div class="lbl">Before, then after</div>' : stage === 1 ? '<div class="lbl">What Postgres said</div>' : ''}${right}</div></div>`;
+      $$('[data-act]', el).forEach((btn) => btn.addEventListener('click', () => {
+        const act = btn.dataset.act;
+        if (act === 'live') { SHELL.playground({ sql: b.live, label: 'Spot the mistake' }); return; }
+        const k = plan.findIndex((p) => p.i === i && p.kind === act);
+        if (k >= 0 && S.build <= k) doBuild(k);
+      }));
+    }
+    return {
+      id: o.id, sec: o.sec, topic: o.topic, beat: o.beat || 4, short: o.short || 'Spot the mistake', title: 'Spot the mistake 🐞',
+      body: () => (bugs.length > 1 ? `<div class="spot-tabs">${bugs.map((b, i) => `<button class="btn small" data-tab="${i}">${i + 1}. ${esc(b.tab)}</button>`).join('')}</div>` : '') + '<div class="spot-area"></div>',
+      enter(el) {
+        render(el, 0);
+        $$('[data-tab]', el).forEach((t) => t.addEventListener('click', () => {
+          const ti = +t.dataset.tab;
+          const k = plan.findIndex((p) => p.i === ti && p.kind === (ti ? 'tab' : 'run'));
+          if (ti && S.build <= k) { doBuild(k); return; }
+          render(el, S.build, ti);
+        }));
+      },
+      builds: plan.map((p, k) => ({ label: p.label, run(el) { render(el, k + 1); } })),
+      sql: (el) => bugs[el && el._spotI != null ? el._spotI : 0].live
+    };
+  }
+
+  /* ---------- Write it: jump to the playground with a starter query ---------- */
+  function writeStep(o) {
+    const st = L.starters[o.topic];
+    return {
+      id: o.id, sec: o.sec, topic: o.topic, beat: 3, short: 'Write it', title: 'Write it ⌨️', label: `Write it: ${st.title}`,
+      body: () => `<div class="write">${code(st.sql)}
+        <div class="write-go"><div class="big-ico">🧪</div><p class="cap">Live, on real PostgreSQL.</p>
+        <button class="btn primary big" data-open-pg>Open the playground <kbd>Space+P</kbd></button></div></div>`,
+      enter(el) { $('[data-open-pg]', el).addEventListener('click', () => SHELL.playground({ sql: st.sql, label: `Write it: ${st.title}` })); },
+      builds: [],
+      sql: () => st.sql
+    };
+  }
+
+  /* ================= the slides ================= */
+  const STEPS = [
+    {
+      id: 'open', sec: 'open', short: 'Title', title: 'Database Relations', hero: true,
+      body: () => '<div class="open"><h1 class="ctx-title">Database Relations</h1></div>',
+      builds: []
+    },
+    {
+      id: 'work', sec: 'life', short: 'Relationships at work', title: 'Where do you see relationships at work?',
+      body: () => {
+        const nodes = [
+          { id: 'mgr', x: 744, y: 64, emoji: '🧑‍💼', label: 'Your manager', color: BLUE, lp: 'r' },
+          { id: 'you', x: 470, y: 280, emoji: '🙋', label: 'You', cls: 'hot', lp: 'l' },
+          { id: 'mate', x: 1018, y: 280, emoji: '🧑‍💻', label: 'Your teammate', lp: 'r' },
+          { id: 'p1', x: 610, y: 460, emoji: '🛒', label: 'Checkout revamp', color: PURPLE, show: 2 },
+          { id: 'p2', x: 878, y: 460, emoji: '📱', label: 'Mobile app', color: PURPLE, show: 2 },
+          { id: 'badge', x: 150, y: 96, emoji: '🪪', label: 'Your employee ID', color: YELLOW, show: 3 }
+        ];
+        const edges = [
+          { a: 'you', b: 'mgr', label: 'reports to', color: BLUE, show: 1 },
+          { a: 'mate', b: 'mgr', label: 'reports to', color: BLUE, show: 1 },
+          { a: 'you', b: 'p1', color: PURPLE, show: 2 }, { a: 'you', b: 'p2', color: PURPLE, show: 2 },
+          { a: 'mate', b: 'p1', color: PURPLE, show: 2 }, { a: 'mate', b: 'p2', color: PURPLE, show: 2 },
+          { a: 'you', b: 'badge', color: YELLOW, show: 3 }
+        ];
+        return lifeBody(people(1488, 560, nodes, edges),
+          cap('Shout them out. 🙋', 0, 1, 'muted') + cap('<span class="k">One</span> manager, <span class="k">many</span> people.', 1, 2) +
+          cap('<span class="k">Many</span> people, <span class="k">many</span> projects.', 2, 3) + cap('<span class="k">One</span> person, <span class="k">one</span> ID. Three shapes. That\'s the whole session.', 3));
+      },
+      builds: [noop('Reports to'), noop('Projects'), noop('Employee ID')]
+    },
+    {
+      id: 'sheet', sec: 'life', short: 'One big sheet', title: 'One big sheet. What could go wrong?',
+      body: () => `<div class="row" style="gap:44px">${sheetHTML()}
+        <div class="col" style="flex:1;gap:24px;padding-top:4px">
+          ${cap(`📱 Emma got a new phone: <b>${esc(NEW_PHONE)}</b>`, null, 1)}
+          <div class="btn-row"><button class="btn primary big" data-build="0">📱 Change Emma's phone</button><button class="btn ghost" data-undo data-show="1">↺ Undo</button></div>
+          ${cap(`Same fact, typed ${ordersOf(1).length} times. Change one, the others lie.`, 2)}
+        </div></div>`,
+      builds: [
+        { label: "Change Emma's phone", run(el) {
+          const rows = $$('tr[data-cid="1"]', el);
+          const first = $('.phone', rows[0]);
+          first.textContent = NEW_PHONE;
+          first.classList.add('fresh');
+          rows.slice(1).forEach((r) => { const c = $('.phone', r); c.classList.add('stale'); c.innerHTML = esc(c.textContent) + '<span class="tag-old">old</span>'; });
+        } },
+        noop('Why it hurts')
+      ]
+    },
+    {
+      id: 'split', sec: 'life', short: 'Split it', title: 'Fix it: one table per thing',
+      body: () => {
+        const cards = tableCard('customers', ['id', 'first_name', 'phone'], pick('customers', ['first_name', 'phone'])) + gap(120) +
+          tableCard('orders', ['id', 'customer_id', 'total'], pick('orders', ['customer_id', 'total']));
+        return `<div class="row" style="gap:40px">
+          <div class="split-wrap"><div class="sheet-view">${sheetHTML()}</div><div class="cards-view">${diagram('orders.customer_id', cards)}</div></div>
+          <div class="col" style="flex:1;gap:22px">
+            <div class="btn-row"><button class="btn primary" data-build="0">✂️ Split it</button><button class="btn" data-build="1" data-show="1">📱 Change Emma's phone</button></div>
+            ${cap(`✅ One change. All ${ordersOf(1).length} of Emma's orders see it.`, 2)}
+          </div></div>`;
+      },
+      builds: [
+        { label: 'Split it', run(el) {
+          $('.split-wrap', el).classList.add('is-split');
+          later(620, () => { const d = $('.diagram', el); if (d) { drawLinks(d, anim()); wireDiagram(d); } });
+        } },
+        { label: "Change Emma's phone", run(el) {
+          const cell = $('.tcard[data-table="customers"] tr[data-key="customers:1"] td[data-col="phone"]', el);
+          cell.textContent = NEW_PHONE;
+          cell.classList.add('cell-ok');
+          later(720, () => { const d = $('.diagram', el); if (d) highlight(d, 'customers:1', 'good-hl'); });
+        } }
+      ]
+    },
+    {
+      id: 'pk', sec: 'keys', intro: true, short: 'Primary key', title: 'Primary key 🔑',
+      body: () => `<div class="oneliner" style="--ol:var(--brand)">${PK_LINE}</div>
+        <div class="row" style="margin-top:22px;gap:40px">
+          <div class="col" style="gap:16px">
+            ${tableCard('customers', ['id', 'first_name', 'last_name', 'email'], pick('customers', ['first_name', 'last_name', 'email']), { cls: 'col-glow pk-card', rowAttr: () => ' class="clickable"' })}
+            ${idCode(`CREATE TABLE customers (
+  id         bigint «GENERATED ALWAYS AS IDENTITY PRIMARY KEY»,
+  first_name text NOT NULL,
+  last_name  text NOT NULL,
+  email      text NOT NULL UNIQUE
+);`, `CREATE TABLE customers (
+  id         uuid «PRIMARY KEY DEFAULT gen_random_uuid()»,
+  first_name text NOT NULL,
+  last_name  text NOT NULL,
+  email      text NOT NULL UNIQUE
+);`, 'sm')}
+          </div>
+          <div class="col" style="flex:1;gap:16px">
+            <p class="cap pk-read">👆 Click a row. One id, one customer.</p>
+            <div class="btn-row"><button class="btn" data-build="0">➕ Add a customer with id 2</button><button class="btn" data-build="1">➕ Add one without an id</button></div>
+            <div class="msg pk-msg"></div>
+          </div></div>`,
+      enter(el) {
+        const card = $('.pk-card', el);
+        const read = $('.pk-read', el);
+        card.addEventListener('click', (e) => {
+          const tr = e.target.closest('tbody tr.clickable');
+          if (!tr) return;
+          $$('tr.picked', card).forEach((x) => x.classList.remove('picked'));
+          tr.classList.add('picked');
+          const c = cust(+tr.dataset.pk);
+          if (c) read.innerHTML = `🎯 <b class="c-customers">id = ${c.id}</b> is <b>${esc(fullName(c))}</b>. Exactly one row.`;
+        });
+      },
+      builds: [
+        { label: 'Add a customer with id 2', run(el) {
+          const card = $('.pk-card', el);
+          $('tbody', card).insertAdjacentHTML('beforeend', `<tr class="ghost${anim() ? ' toast-pop' : ''}" data-key="customers:dup"><td class="pkcell">2</td><td>Ryan</td><td>Cole</td><td>ryan.cole@example.com</td></tr>`);
+          shake(card);
+          $('.pk-msg', el).innerHTML = `<div class="callout bad toast-pop">🙅 A primary key never repeats.${pgErr('duplicate key value violates unique constraint "customers_pkey"', 'Key (id)=(2) already exists.')}</div>`;
+        } },
+        { label: 'Add one without an id', run(el) {
+          const card = $('.pk-card', el);
+          const g = $('tr.ghost', card);
+          if (g) g.remove();
+          $('tbody', card).insertAdjacentHTML('beforeend', `<tr class="added toast-pop" data-key="customers:${NEXT.customers}" data-pk="${NEXT.customers}"><td class="pkcell">${NEXT.customers}</td><td>Noah</td><td>Bennett</td><td>noah.bennett@example.com</td></tr>`);
+          $('.pk-msg', el).innerHTML = `<div class="callout good toast-pop">✅ Postgres picked <b>${NEXT.customers}</b>.${code(`INSERT INTO customers (first_name, last_name, email)
+VALUES ('Noah', 'Bennett', 'noah.bennett@example.com')
+RETURNING id;  -- ${NEXT.customers}`, 'xs')}</div>`;
+        } }
+      ]
+    },
+    {
+      id: 'fk', sec: 'keys', intro: true, short: 'Foreign key', title: 'Foreign key 🔗',
+      body: () => {
+        const cards = tableCard('customers', ['id', 'first_name'], pick('customers', ['first_name'])) + gap(110) +
+          tableCard('orders', ['id', 'customer_id', 'total'], pick('orders', ['customer_id', 'total']));
+        return `<div class="oneliner" style="--ol:var(--c-customers)">${FK_LINE}</div>
+          <div class="row" style="margin-top:22px;gap:40px">${diagram('orders.customer_id', cards)}
+            <div class="col" style="flex:1;gap:14px">
+              ${idCode(`-- one line inside CREATE TABLE orders
+customer_id bigint NOT NULL «REFERENCES customers (id)»`, `-- with uuid ids, the FK is a uuid too
+customer_id uuid NOT NULL «REFERENCES customers (id)»`, 'sm')}
+              <div class="callout sm">🧬 Same type as the key it points at: <b>bigint → bigint</b>, <b>uuid → uuid</b>.</div>
+              <div class="callout sm">🏷️ Name it <code class="inl">&lt;table_singular&gt;_id</code>, like <code class="inl">customer_id</code>. The database doesn't care. Humans do.</div>
+              <div class="btn-row"><button class="btn" data-build="0">➕ Order for customer 3</button></div>
+              <div class="msg fk-msg"></div>
+            </div></div>`;
+      },
+      enter(el) { drawAndWire(el); },
+      builds: [
+        { label: 'Order for customer 3', run(el) {
+          const card = $('.tcard[data-table="orders"]', el);
+          $('tbody', card).insertAdjacentHTML('beforeend', `<tr class="added toast-pop" data-key="orders:${NEXT.orders}" data-pk="${NEXT.orders}"><td class="pkcell" data-col="id" data-v="${NEXT.orders}">${NEXT.orders}</td><td class="fkcell c-customers" data-col="customer_id" data-v="3">3</td><td data-col="total" data-v="45.40">$45.40</td></tr>`);
+          $('.fk-msg', el).innerHTML = '<p class="cap toast-pop">✅ Saved. The new arrow lands on Olivia.</p>';
+          later(120, () => { const d = $('.diagram', el); d._pick = 'orders:' + NEXT.orders; drawLinks(d, false); });
+        } }
+      ]
+    },
+    spotStep({ id: 'fk-spot', sec: 'keys', lesson: 'keys', beat: 0, short: 'Spot the mistake: keys' }),
+
+    /* ----- one to many ----- */
+    {
+      id: 'om-life', sec: 'one-many', topic: 'one-many', beat: 1, short: 'In real life', title: 'One to many, in real life',
+      body: () => {
+        const nodes = [
+          { id: 'm', x: 400, y: 250, r: 62, emoji: '🧑‍💼', label: 'Manager', color: BLUE },
+          { id: 'e1', x: 1090, y: 40, r: 44, emoji: '👩‍🎨', label: 'Designer' },
+          { id: 'e2', x: 1090, y: 190, r: 44, emoji: '🧑‍💻', label: 'Developer' },
+          { id: 'e3', x: 1090, y: 340, r: 44, emoji: '🧑‍🔬', label: 'Tester' },
+          { id: 'e4', x: 1090, y: 490, r: 44, emoji: '✍️', label: 'Writer' },
+          { id: 'm2', x: 690, y: 490, r: 50, emoji: '🧑‍💼', label: 'A second manager?', cls: 'ghost', show: 2 }
+        ];
+        const edges = ['e1', 'e2', 'e3', 'e4'].map((b) => ({ a: 'm', b, color: BLUE, show: 1 }))
+          .concat([{ a: 'm2', b: 'e4', cls: 'bad', x: true, show: 2 }]);
+        return lifeBody(people(1488, 580, nodes, edges),
+          cap('One manager. How many people?', 0, 1, 'muted') + cap('<span class="k">One</span> manager, <span class="k">many</span> people.', 1, 2) +
+          cap('Each person has exactly <span class="k">one</span> manager.', 2));
+      },
+      builds: [noop('Draw the lines'), noop('Two managers?')]
+    },
+    {
+      id: 'om-see', sec: 'one-many', topic: 'one-many', beat: 2, short: 'One to many / Many to one', title: 'One to many / Many to one',
+      body: () => {
+        const cards = tableCard('customers', ['id', 'first_name'], pick('customers', ['first_name']), { rowAttr: () => ' class="clickable"' }) + gap(150) +
+          tableCard('orders', ['id', 'customer_id', 'total'], pick('orders', ['customer_id', 'total']), { rowAttr: () => ' class="clickable"' });
+        return `<div class="row" style="gap:44px">
+          <div class="col" style="gap:14px">${diagram('orders.customer_id', cards, null, 'rev')}<p class="side-note om-read">👆 Click a row to follow it.</p></div>
+          <div class="col" style="flex:1;gap:22px">
+            <div class="flip" role="group" aria-label="Read it from" style="flex-direction:column;align-items:stretch">
+              <button data-flip="one" aria-pressed="true">👤 → 🧾🧾🧾 One customer has many orders</button>
+              <button data-flip="many" aria-pressed="false">🧾🧾🧾 → 👤 Many orders belong to one customer</button></div>
+            <p class="cap om-cap">One customer has many orders.</p>
+            ${code(`-- in orders, the many side
+customer_id bigint NOT NULL
+  REFERENCES customers (id)`, 'sm')}
+          </div></div>`;
+      },
+      enter(el) {
+        el._flip = 'one';
+        drawAndWire(el, (tr) => {
+          const [t, id] = tr.dataset.key.split(':');
+          const read = $('.om-read', el);
+          if (t === 'customers') {
+            const c = cust(+id);
+            const n = ordersOf(c.id).length;
+            read.innerHTML = n ? `<b>${esc(c.first_name)}</b> has ${n} order${n === 1 ? '' : 's'}: ${listJoin(ordersOf(c.id).map((o) => String(o.id)))}.` : `<b>${esc(c.first_name)}</b> has 0 orders. Still a customer.`;
+          } else {
+            const o = SL.orders.find((x) => x.id === +id);
+            read.innerHTML = `Order ${o.id} belongs to <b>${esc(cust(o.customer_id).first_name)}</b>. Just one.`;
+          }
+        });
+        $$('[data-flip]', el).forEach((b) => b.addEventListener('click', () => {
+          if (b.dataset.flip === 'many' && S.build < 1) { doBuild(0); return; }
+          setFlip(el, b.dataset.flip);
+        }));
+      },
+      builds: [{ label: 'Flip it', run(el) { setFlip(el, 'many'); } }],
+      sql: () => L.starters['one-many'].sql
+    },
+    writeStep({ id: 'om-write', sec: 'one-many', topic: 'one-many' }),
+    spotStep({ id: 'om-spot', sec: 'one-many', topic: 'one-many', lesson: 'one-many' }),
+
+    /* ----- one to one ----- */
+    {
+      id: 'oo-life', sec: 'one-one', topic: 'one-one', beat: 1, short: 'In real life', title: 'One to one, in real life',
+      body: () => {
+        const ppl = [['You', '🙋'], ['Your friend', '🧑‍🦱'], ['Your grandpa', '👴']];
+        const nodes = [];
+        const edges = [];
+        ppl.forEach(([label, emoji], i) => {
+          const y = 90 + i * 190;
+          nodes.push({ id: 'p' + i, x: 420, y, r: 50, emoji, label, cls: i === 0 ? 'hot' : '' });
+          nodes.push({ id: 'c' + i, x: 960, y, r: 50, emoji: '🪪', label: `Aadhaar ····${['4821', '7390', '1156'][i]}`, color: YELLOW });
+          edges.push({ a: 'p' + i, b: 'c' + i, color: YELLOW, show: 1 });
+        });
+        nodes.push({ id: 'g', x: 1290, y: 90, r: 50, emoji: '🪪', label: 'A second one?', cls: 'ghost', show: 2 });
+        edges.push({ a: 'p0', b: 'g', cls: 'bad', x: true, bend: -150, show: 2 });
+        return lifeBody(people(1488, 570, nodes, edges),
+          cap('Who has exactly one of something?', 0, 1, 'muted') + cap('<span class="k">One</span> person, <span class="k">one</span> Aadhaar.', 1, 2) +
+          cap('A second Aadhaar for the same person? Not allowed.', 2));
+      },
+      builds: [noop('Draw the lines'), noop('A second one?')]
+    },
+    {
+      id: 'oo-see', sec: 'one-one', topic: 'one-one', beat: 2, short: 'See it', title: 'One to one 👤🪪',
+      body: () => {
+        const cards = tableCard('customers', ['id', 'first_name'], pick('customers', ['first_name'])) + gap(120) +
+          tableCard('loyalty_cards', ['id', 'customer_id', 'tier'], pick('loyalty_cards', ['customer_id', 'tier']));
+        return `<div class="row" style="gap:40px">
+          <div class="col" style="gap:12px">${diagram('loyalty_cards.customer_id', cards)}</div>
+          <div class="col" style="flex:1;gap:16px">
+            <div class="oo-code">${idCode(`CREATE TABLE loyalty_cards (
+  id          bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  customer_id bigint NOT NULL «UNIQUE»
+              REFERENCES customers (id),
+  tier        text NOT NULL DEFAULT 'bronze'
+);`, `CREATE TABLE loyalty_cards (
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  customer_id uuid NOT NULL «UNIQUE»
+              REFERENCES customers (id),
+  tier        text NOT NULL DEFAULT 'bronze'
+);`, 'xs')}</div>
+            ${cap('⭐ UNIQUE on the FK is the only difference from one to many.')}
+            <div class="btn-row"><button class="btn" data-build="0">➕ Give Emma a second card</button></div>
+            <div class="msg oo-msg"></div>
+          </div></div>`;
+      },
+      enter(el) { drawAndWire(el); },
+      builds: [
+        { label: 'Give Emma a second card', run(el) {
+          const card = $('.tcard[data-table="loyalty_cards"]', el);
+          $('tbody', card).insertAdjacentHTML('beforeend', `<tr class="ghost${anim() ? ' toast-pop' : ''}" data-key="loyalty_cards:ghost"><td class="pkcell">${NEXT.loyalty_cards}</td><td class="fkcell c-customers">1</td><td>bronze</td></tr>`);
+          shake(card);
+          $('.oo-msg', el).innerHTML = `<div class="callout bad toast-pop">🚫 One customer, one card.${pgErr('duplicate key value violates unique constraint "loyalty_cards_customer_id_key"', 'Key (customer_id)=(1) already exists.')}</div>`;
+        } }
+      ],
+      sql: () => L.starters['one-one'].sql
+    },
+    writeStep({ id: 'oo-write', sec: 'one-one', topic: 'one-one' }),
+    spotStep({ id: 'oo-spot', sec: 'one-one', topic: 'one-one', lesson: 'one-one' }),
+
+    /* ----- many to many ----- */
+    {
+      id: 'mm-life', sec: 'many-many', topic: 'many-many', beat: 1, short: 'In real life', title: 'Many to many, in real life',
+      body: () => {
+        const S1 = [['Student A', '🧒'], ['Student B', '👧'], ['Student C', '🧑‍🎓']];
+        const T1 = [['Maths', '👩‍🏫'], ['Science', '👨‍🔬'], ['Art', '🧑‍🎨']];
+        const nodes = [];
+        S1.forEach(([label, emoji], i) => nodes.push({ id: 's' + i, x: 300, y: 70 + i * 190, r: 46, emoji, label }));
+        T1.forEach(([label, emoji], i) => nodes.push({ id: 't' + i, x: 1188, y: 70 + i * 190, r: 46, emoji, label: label + ' teacher', color: PURPLE }));
+        nodes.push({ id: 'reg', x: 744, y: 260, r: 64, box: true, w: 230, emoji: '📋', label: 'The class register', color: PURPLE, show: 3 });
+        const edges = [
+          { a: 's0', b: 't0', color: PURPLE, show: 1, gone: 3 }, { a: 's0', b: 't1', color: PURPLE, show: 1, gone: 3 },
+          { a: 's1', b: 't0', color: PURPLE, show: 2, gone: 3 }, { a: 's2', b: 't0', color: PURPLE, show: 2, gone: 3 }
+        ];
+        ['s0', 's1', 's2'].forEach((s) => edges.push({ a: s, b: 'reg', color: PURPLE, show: 3 }));
+        ['t0', 't1', 't2'].forEach((t) => edges.push({ a: 'reg', b: t, color: PURPLE, show: 3 }));
+        return lifeBody(people(1488, 570, nodes, edges),
+          cap('How many teachers per student? How many students per teacher?', 0, 1, 'muted') +
+          cap('<span class="k">One</span> student, <span class="k">many</span> teachers.', 1, 2) +
+          cap('<span class="k">One</span> teacher, <span class="k">many</span> students.', 2, 3) +
+          cap('So the school keeps a register in the middle.', 3));
+      },
+      builds: [noop('One student'), noop('One teacher'), noop('The register')]
+    },
+    {
+      id: 'mm-where', sec: 'many-many', topic: 'many-many', beat: 2, short: 'Where does the FK go?', title: 'Where does the FK go? 🤔',
+      body: () => `<div class="try-tabs"><button class="btn" data-try="1">Try 1: FK in orders</button><button class="btn" data-try="2">Try 2: FK in products</button></div>
+        <div class="row" style="gap:44px"><div class="try-left"></div><div class="try-right"></div>
+          <div class="col" style="flex:1;gap:16px"><div class="try-cap"></div>
+            ${cap('👀 Neither side can hold it.', 3)}
+          </div></div>`,
+      enter(el) {
+        renderTry(el, 0);
+        $$('[data-try]', el).forEach((b) => b.addEventListener('click', () => {
+          const n = +b.dataset.try;
+          if (S.build < n) doBuild(n - 1);
+          renderTry(el, n);
+        }));
+      },
+      builds: [
+        { label: 'Try 1: FK in orders', run(el) { renderTry(el, 1); } },
+        { label: 'Try 2: FK in products', run(el) { renderTry(el, 2); } },
+        noop('Neither side')
+      ]
+    },
+    {
+      id: 'mm-junction', sec: 'many-many', topic: 'many-many', beat: 2, short: 'The junction table', title: 'Put a table in the middle',
+      body: () => {
+        const orders = tableCard('orders', ['id', 'total'], pick('orders', ['total']));
+        const items = tableCard('order_items', ['order_id', 'product_id', 'quantity'], SL.order_items, { cls: 'is-hidden', badge: 'junction' });
+        const products = tableCard('products', ['id', 'name'], pick('products', ['name']));
+        const inner = orders + gap(110) +
+          `<div class="mid-slot"><div class="placeholder"><div><div class="q">?</div><p style="margin:8px 0 14px">Something goes here</p><button class="btn primary" data-build="0">✨ Slide it in</button></div></div>${items}</div>` +
+          gap(110) + products;
+        return `<div style="position:relative;height:100%">${diagram('order_items.order_id,order_items.product_id', inner, 'justify-content:center')}
+          <div class="mm-block" data-show="1" style="left:0;top:350px;width:360px"><div class="callout sm">🔑 <b>PRIMARY KEY (order_id, product_id)</b></div></div>
+          <div class="mm-block" data-show="1" style="right:0;top:350px;width:430px"><div class="callout sm">🟢 Hover the ${esc(prod(2).name)} 👆</div></div>
+        </div>`;
+      },
+      builds: [
+        { label: 'Slide in order_items', run(el) {
+          const ph = $('.placeholder', el);
+          if (ph) ph.remove();
+          const it = $('.tcard[data-table="order_items"]', el);
+          it.classList.remove('is-hidden');
+          if (anim()) it.classList.add('slide-in');
+          el.classList.add('aha');
+          const h = $('h1', el);
+          if (!$('.aha-badge', h)) h.insertAdjacentHTML('beforeend', '<span class="aha-badge">💡 Aha!</span>');
+          later(600, () => { const d = $('.diagram', el); drawLinks(d, anim()); wireDiagram(d); });
+        } }
+      ]
+    },
+    {
+      id: 'mm-designs', sec: 'many-many', topic: 'many-many', beat: 2, short: 'Two ways to write it', title: 'Two ways to write the junction table',
+      body: () => `<div class="designs">
+          <div class="dcard" style="--dc:var(--good)"><h3>Option A: the pair is the key <span class="tag">default</span></h3>
+            ${code(`CREATE TABLE order_items (
+  order_id   bigint  NOT NULL REFERENCES orders (id),
+  product_id bigint  NOT NULL REFERENCES products (id),
+  quantity   integer NOT NULL DEFAULT 1,
+  «PRIMARY KEY (order_id, product_id)»
+);`, 'sm')}
+            <p class="use">The standard choice for a pure junction table.</p></div>
+          <div class="dcard" style="--dc:var(--c-order_items)"><h3>Option B: its own id, plus UNIQUE</h3>
+            ${code(`CREATE TABLE order_items (
+  «id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY»,
+  order_id   bigint  NOT NULL REFERENCES orders (id),
+  product_id bigint  NOT NULL REFERENCES products (id),
+  quantity   integer NOT NULL DEFAULT 1,
+  «UNIQUE (order_id, product_id)»
+);`, 'sm')}
+            <p class="use">When other tables point at a row, or your ORM wants one id.</p>
+            <p class="foot">The same pair can repeat? Keep the id, drop the UNIQUE.</p></div>
+        </div>
+        ${cap('Both are correct. Pick A by default.', null, null, 'verdict-line')}`,
+      builds: []
+    },
+    writeStep({ id: 'mm-write', sec: 'many-many', topic: 'many-many' }),
+    spotStep({ id: 'mm-spot', sec: 'many-many', topic: 'many-many', lesson: 'many-many' }),
+    {
+      id: 'self', sec: 'many-many', short: 'Bonus: a table that points at itself', title: 'Bonus: a table can point at itself 🔁',
+      body: () => {
+        const ra = () => ' class="clickable"';
+        return `<div class="selfs">
+          <div class="col" style="gap:8px">${diagram('employees.manager_id', tableCard('employees', ['id', 'name', 'manager_id'], EMP, { rowAttr: ra }) + gap(150))}
+            <span class="chip"><span class="c-employees">employees.manager_id → employees.id</span></span></div>
+          <div class="col" style="gap:8px">${diagram('comments.parent_id', tableCard('comments', ['id', 'body', 'parent_id'], COM, { rowAttr: ra }) + gap(150))}
+            <span class="chip"><span class="c-comments">comments.parent_id → comments.id</span></span></div>
+        </div>
+        <p class="cap sr-read" style="margin-top:26px">A column can point at its own table. 👆 Click a row.</p>`;
+      },
+      enter(el) {
+        const [de, dc] = $$('.diagram', el);
+        de._connect = selfConnect(EMP, 'manager_id', 'employees')(de);
+        dc._connect = selfConnect(COM, 'parent_id', 'comments')(dc);
+        drawAndWire(el, (tr) => {
+          const [t, id] = tr.dataset.key.split(':');
+          $('.sr-read', el).innerHTML = t === 'employees' ? chainText(EMP, 'manager_id', 'name', +id) : chainText(COM, 'parent_id', 'body', +id);
+        });
+      },
+      builds: []
+    },
+
+    /* ----- game, recap, practice ----- */
+    {
+      id: 'game', sec: 'game', short: 'Game: guess the relationship', title: 'Game: guess the relationship 🎯',
+      body: () => `<div class="gamehero"><div class="gamebins">${[['11', 'One to one'], ['1N', 'One to many'], ['MN', 'Many to many']].map(([k, n]) => `<div>${ART[k]}<span>${n}</span></div>`).join('')}</div>
+        <div class="gamecta"><div class="big-ico">🎯</div><p class="cap">Two teams. Two questions. Shout the answer.</p>
+        <button class="btn primary big" data-open-game>▶ Play</button></div></div>`,
+      enter(el) { $('[data-open-game]', el).addEventListener('click', () => SHELL.game({ game: 'rush', timer: false, teams: true })); },
+      builds: []
+    },
+    {
+      id: 'recap', sec: 'recap', short: 'Recap', title: "That's the whole thing 🎉",
+      body: () => `<div class="recap-top">
+          <div class="rcard" style="--rc:var(--brand)"><h3>🔑 Primary key</h3><p>${PK_LINE}</p></div>
+          <div class="rcard" style="--rc:var(--c-customers)"><h3>🔗 Foreign key</h3><p>${FK_LINE}</p></div>
+          <div class="rcard" style="--rc:var(--c-order_items)"><h3>🧠 The two questions</h3><table class="mini-trick">
+            <tr><td class="yes">Yes</td><td class="no">No</td><td><b>One to many.</b> FK on the many side.</td></tr>
+            <tr><td class="no">No</td><td class="no">No</td><td><b>One to one.</b> FK plus UNIQUE.</td></tr>
+            <tr><td class="yes">Yes</td><td class="yes">Yes</td><td><b>Many to many.</b> Junction table.</td></tr></table></div>
+        </div>
+        <div class="recap-code">
+          <div class="pcard" style="--cc:var(--c-orders)"><h3>One to many</h3><pre>${highlightSQL(`customer_id bigint NOT NULL
+  REFERENCES customers (id)
+
+SELECT c.first_name, o.total
+FROM customers c
+JOIN orders o
+  ON o.customer_id = c.id;`)}</pre></div>
+          <div class="pcard" style="--cc:var(--c-loyalty_cards)"><h3>One to one</h3><pre>${highlightSQL(`customer_id bigint NOT NULL UNIQUE
+  REFERENCES customers (id)
+
+SELECT c.first_name, lc.tier
+FROM customers c
+LEFT JOIN loyalty_cards lc
+  ON lc.customer_id = c.id;`)}</pre></div>
+          <div class="pcard" style="--cc:var(--c-order_items)"><h3>Many to many</h3><pre>${highlightSQL(`PRIMARY KEY (order_id, product_id)
+
+SELECT o.id, p.name
+FROM orders o
+JOIN order_items oi
+  ON oi.order_id = o.id
+JOIN products p
+  ON p.id = oi.product_id;`)}</pre></div>
+        </div>`,
+      builds: []
+    },
+    {
+      id: 'practice', sec: 'recap', short: 'Practice after the session', title: 'Practice after the session 🏋️',
+      body: () => {
+        const tile = (attrs, em, nm, sk, color) => `<button class="ptile" ${attrs} style="--gc:${color}"><span class="em">${em}</span><span class="nm">${nm}</span><span class="sk">${sk}</span></button>`;
+        const games = [
+          ['rush', '⚡', 'Relationship Rush', 'Today\'s game, with the clock on.', 'var(--brand)'],
+          ['keys', '🔑', 'Key Builder', 'Drag the FK into the right table.', 'var(--c-loyalty_cards)'],
+          ['allow', '🛡️', 'Will Postgres Allow It?', 'Works, or which rule stops it?', 'var(--c-customers)'],
+          ['count', '🔢', 'Count the Rows', 'Guess how many rows a JOIN returns.', 'var(--c-orders)'],
+          ['build', '🧩', 'Query Builder', 'Put the SQL pieces in order.', 'var(--c-order_items)']
+        ].map(([id, em, nm, sk, c]) => tile(`data-game="${id}"`, em, nm, sk, c)).join('');
+        const tabs = [
+          ['design', '📐', 'Design tables', 'Two questions in, CREATE TABLE out.'],
+          ['change', '✏️', 'Change data', 'Break the rules, see what Postgres says.'],
+          ['join', '🔗', 'Watch a JOIN', 'Rows matching one step at a time.'],
+          ['write', '⌨️', 'Write SQL', 'Any query, on real PostgreSQL.'],
+          ['interview', '🎤', 'Interview prep', '47 real questions, with answers.']
+        ].map(([id, em, nm, sk]) => tile(`data-pg="${id}"`, em, nm, sk, 'var(--c-products)')).join('');
+        const refs = tile('data-extra="trick"', '🧠', 'The two-question trick', 'Try it on any two things.', 'var(--c-order_items)') +
+          tile('data-extra="gotchas"', '🪤', 'Gotchas worth knowing', 'Nine things that bite in real projects.', 'var(--bad)');
+        return `<div class="practice">
+          <div class="prow"><h3>🎮 Games</h3><div class="ptiles">${games}</div></div>
+          <div class="prow"><h3>🧪 Playground</h3><div class="ptiles">${tabs}</div></div>
+          <div class="prow"><h3>📚 Look it up</h3><div class="ptiles">${refs}</div></div>
+        </div>`;
+      },
+      enter(el) {
+        $$('[data-game]', el).forEach((b) => b.addEventListener('click', () => SHELL.game({ game: b.dataset.game, timer: b.dataset.game === 'rush', from: 'menu' })));
+        $$('[data-pg]', el).forEach((b) => b.addEventListener('click', () => SHELL.playground({ mode: b.dataset.pg, from: 'menu' })));
+        $$('[data-extra]', el).forEach((b) => b.addEventListener('click', () => goExtra(b.dataset.extra)));
+      },
+      builds: []
+    },
+
+    /* ----- extras, opened from the practice menu ----- */
+    {
+      id: 'trick', sec: 'recap', extra: true, short: 'The two-question trick', title: 'The two-question trick 🧠',
+      body: () => `<div class="trick-wrap"><div class="col" style="gap:14px">
+          <div class="pair-chips">
+            <button class="btn small" data-pair="0">👤 Customer &amp; order</button>
+            <button class="btn small" data-pair="1">🪪 Customer &amp; card</button>
+            <button class="btn small" data-pair="2">🧾 Order &amp; product</button>
+            <button class="btn small" data-pair="3">✏️ Your own</button></div>
+          <div class="own-inputs" hidden>A <input id="ownA" value="user" aria-label="Thing A"> B <input id="ownB" value="role" aria-label="Thing B"></div>
+          <div class="qcard"><div><span class="qn">Q1</span><span class="qt" id="tq1"></span></div><div class="yn" data-q="1"><button class="btn small" data-v="yes">Yes</button><button class="btn small" data-v="no">No</button></div></div>
+          <div class="qcard"><div><span class="qn">Q2</span><span class="qt" id="tq2"></span></div><div class="yn" data-q="2"><button class="btn small" data-v="yes">Yes</button><button class="btn small" data-v="no">No</button></div></div>
+          <div class="callout result" id="tres"></div></div>
+        <div class="col" style="gap:18px">
+          <table class="ttable" id="ttable"><thead><tr><th class="qcol">Q1: Can one A have many B?</th><th class="qcol">Q2: Can one B have many A?</th><th class="relcol">So it's</th><th>Where the FK goes</th></tr></thead><tbody>
+            <tr data-r="yn"><td class="yes">Yes</td><td class="no">No</td><td class="rel">One to many</td><td>On the many side (B)</td></tr>
+            <tr data-r="nn"><td class="no">No</td><td class="no">No</td><td class="rel">One to one</td><td>Either side, plus UNIQUE</td></tr>
+            <tr data-r="yy"><td class="yes">Yes</td><td class="yes">Yes</td><td class="rel">Many to many</td><td>A junction table with two FKs</td></tr>
+          </tbody></table>
+        </div></div>`,
+      enter(el) { trickInit(el); },
+      builds: []
+    },
+    {
+      id: 'gotchas', sec: 'recap', extra: true, short: 'Gotchas', title: 'Gotchas worth knowing 🪤',
+      body: () => `<div class="gotchas">${GOTCHAS.map((g, i) => `<div class="gcard2" data-g="${i}"><button class="ask small" data-gq="${i}"><span class="ico-e">${g[0]}</span>${esc(g[1])}</button><p class="ans" hidden>${g[2]}</p></div>`).join('')}</div>`,
+      enter(el) {
+        $$('[data-gq]', el).forEach((b) => b.addEventListener('click', () => {
+          const card = b.closest('.gcard2');
+          const ans = $('.ans', card);
+          ans.hidden = false;
+          ans.classList.add('toast-pop');
+          card.classList.add('open');
+          b.classList.add('is-open');
+        }));
+      },
+      builds: []
+    }
+  ];
+  function setFlip(el, v) {
+    el._flip = v;
+    $$('[data-flip]', el).forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.flip === v)));
+    const c = $('.om-cap', el);
+    c.textContent = v === 'one' ? 'One customer has many orders.' : 'Same relationship, read from the other side.';
+    if (anim()) { c.classList.remove('toast-pop'); void c.offsetWidth; c.classList.add('toast-pop'); }
+    const d = $('.diagram', el);
+    if (v === 'one') d.dataset.dir = 'rev'; else delete d.dataset.dir;
+    later(30, () => drawLinks(d, anim()));
+  }
+
+  const INTRO = { label: 'Show the slide', run(el) { later(30, () => $$('.diagram', el).forEach((d) => drawLinks(d, anim()))); } };
+  STEPS.forEach((st) => { if (st.intro) st.builds = [INTRO].concat(st.builds); });
+  const MAIN = STEPS.filter((s) => !s.extra);
+  const PRACTICE = STEPS.findIndex((s) => s.id === 'practice');
+
+  const SECTIONS = [
+    { id: 'open', name: 'Open' },
+    { id: 'life', name: 'Real-life whiteboard' },
+    { id: 'keys', name: 'PK / FK' },
+    { id: 'one-many', name: 'One to many' },
+    { id: 'one-one', name: 'One to one' },
+    { id: 'many-many', name: 'Many to many' },
+    { id: 'game', name: 'Game' },
+    { id: 'recap', name: 'Recap' }
+  ];
+  const secOf = (id) => SECTIONS.find((s) => s.id === id);
+  const BEATS = ['In real life', 'See it', 'Write it', 'Spot the mistake'];
+
+  /* ================= engine ================= */
+  function changed() { updateFooter(); }
+  function syncShows(el) {
+    $$('[data-show]', el).forEach((x) => x.classList.toggle('shown', S.build >= +x.dataset.show));
+    $$('[data-gone]', el).forEach((x) => x.classList.toggle('gone', S.build >= +x.dataset.gone));
+    $$('[data-build]', el).forEach((b) => {
+      const done = +b.dataset.build < S.build;
+      b.disabled = done;
+      if (b.classList.contains('ask')) b.classList.toggle('is-open', done);
+    });
+  }
+  function wireIds(el) {
+    $$('.idswitch', el).forEach((w) => $$('.idbtn', w).forEach((b) => b.addEventListener('click', () => {
+      $$('.idbtn', w).forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+      $$('.idpane', w).forEach((p) => { p.hidden = p.dataset.pane !== b.dataset.opt; });
+    })));
+  }
+  function beatsHTML(st) {
+    if (!st.topic || !st.beat) return '';
+    return `<div class="beats" aria-label="Where we are">${BEATS.map((b, i) => `<span class="${i + 1 === st.beat ? 'on' : i + 1 < st.beat ? 'done' : ''}">${i + 1} ${b}</span>`).join('')}</div>`;
+  }
+  function renderStep(animateIn) {
+    const st = STEPS[S.step];
+    S.build = 0;
+    const veil = st.intro ? ' data-show="1"' : '';
+    const backBtn = st.extra ? '<button class="btn" data-back>← Back to the menu <kbd>B</kbd></button>' : '';
+    const head = st.hero ? '' : `<div class="slide-head"><div class="step-no">${st.extra ? '★' : MAIN.indexOf(st) + 1}</div><div><h1>${st.title}</h1></div>${beatsHTML(st)}${backBtn}</div>`;
+    const cls = (animateIn ? ' enter' : '') + (FAST ? ' instant settled' : '');
+    storyEl.innerHTML = `<div class="slide${cls}" data-id="${st.id}">${head}<div class="slide-body"${veil}>${st.body()}</div></div>`;
+    const el = $('.slide', storyEl);
+    if (st.intro) {
+      const body = $('.slide-body', el);
+      $$('[data-build]', body).forEach((b) => { b.dataset.build = +b.dataset.build + 1; });
+      $$('[data-show]', body).forEach((b) => { b.dataset.show = +b.dataset.show + 1; });
+      $$('[data-gone]', body).forEach((b) => { b.dataset.gone = +b.dataset.gone + 1; });
+    }
+    $$('[data-build]', el).forEach((b) => b.addEventListener('click', () => doBuild(+b.dataset.build)));
+    $$('[data-undo]', el).forEach((b) => b.addEventListener('click', () => { renderStep(false); changed(); }));
+    $$('[data-back]', el).forEach((b) => b.addEventListener('click', backToTopic));
+    wireIds(el);
+    if (st.enter) st.enter(el);
+    syncShows(el);
+  }
+  function doBuild(i) {
+    const st = STEPS[S.step];
+    const el = $('.slide', storyEl);
+    while (S.build <= i && S.build < st.builds.length) {
+      st.builds[S.build].run(el);
+      S.build += 1;
+    }
+    syncShows(el);
+    changed();
+  }
+  /* Back: rebuild the slide and quietly redo all but the last click */
+  const ENTRANCE = '[data-show].shown, .toast-pop, .aha-badge, .slide-in';
+  function replay(n) {
+    FAST = true;
+    try {
+      renderStep(false);
+      const st = STEPS[S.step];
+      const el = $('.slide', storyEl);
+      while (S.build < n && S.build < st.builds.length) { st.builds[S.build].run(el); S.build += 1; }
+      syncShows(el);
+      $$(ENTRANCE, el).forEach((x) => { if (x.getClientRects().length) x.style.animation = 'none'; });
+      requestAnimationFrame(() => requestAnimationFrame(() => el.classList.remove('instant')));
+    } finally { FAST = false; }
+    changed();
+  }
+  function back() {
+    const st = STEPS[S.step];
+    if (S.build > 0) { replay(S.build - 1); return; }
+    if (st.extra) { backToTopic(); return; }
+    if (S.step > 0) { S.step -= 1; replay(STEPS[S.step].builds.length); }
+  }
+  function go(n) {
+    S.step = Math.max(0, Math.min(STEPS.length - 1, n));
+    if (!STEPS[S.step].extra) S.back = null;
+    renderStep(true);
+    changed();
+  }
+  /* Next only ever moves through the slides. Opening the playground or the game is always a button or Space + P / G. */
+  function next(skip) {
+    const st = STEPS[S.step];
+    if (!skip && S.build < st.builds.length) { doBuild(S.build); return; }
+    if (st.extra) { backToTopic(); return; }
+    if (S.step < PRACTICE) go(S.step + 1);
+  }
+  function goExtra(id) {
+    const k = STEPS.findIndex((s) => s.id === id);
+    if (k < 0) return;
+    S.back = S.step;
+    S.step = k;
+    renderStep(true);
+    changed();
+  }
+  /* B: leave an extra slide, back to the practice menu */
+  function backToTopic() {
+    if (!STEPS[S.step].extra) return false;
+    const to = S.back == null ? PRACTICE : S.back;
+    S.back = null;
+    S.step = to;
+    renderStep(true);
+    changed();
+    return true;
+  }
+
+  function updateFooter() {
+    const st = STEPS[S.step];
+    const n = MAIN.indexOf(st);
+    $('#fCount').textContent = st.extra ? 'Extra' : `Step ${n + 1} of ${MAIN.length}`;
+    $('#fTitle').textContent = `${secOf(st.sec).name} · ${st.short}`;
+    $('#progress').style.width = (st.extra ? 100 : (n / (MAIN.length - 1)) * 100) + '%';
+    $('#fRight').innerHTML = '<span class="keyhint" title="Hold Space, then press P, G or S"><kbd>Space</kbd> + <kbd>P</kbd> / <kbd>G</kbd> / <kbd>S</kbd></span><span><kbd>?</kbd> keys</span>';
+  }
+
+  /* ================= the playground and the game, each in its own tab ================= */
+  const SHELL = {
+    playground(o = {}) {
+      if (o.sql) Tabs.go('playground', { type: 'write', sql: o.sql, label: o.label || '' });
+      else if (o.mode) Tabs.go('playground', { type: 'mode', mode: o.mode });
+      else Tabs.go('playground');
+    },
+    game(o = {}) { Tabs.go('game', o.game ? { type: 'open', game: o.game, timer: !!o.timer, teams: o.teams } : null); }
+  };
+  window.SHELL = SHELL;
+  /* on a slide with SQL, the playground opens with that query loaded */
+  function openPlaygroundHere() {
+    const st = STEPS[S.step];
+    const el = $('.slide', storyEl);
+    if (st.sql) SHELL.playground({ sql: st.sql(el), label: st.label || st.short });
+    else SHELL.playground();
+  }
+  Tabs.setShortcut((page) => { if (page === 'playground') openPlaygroundHere(); else Tabs.go(page); });
+  /* light or dark follows across the tabs */
+  let themeFromTab = false;
+  U.onTheme((t) => { if (!themeFromTab) Tabs.send({ type: 'theme', t }); });
+  Tabs.on((m) => {
+    if (m.type !== 'theme' || !m.t || m.t === document.documentElement.getAttribute('data-theme')) return;
+    themeFromTab = true;
+    try { U.setTheme(m.t); } finally { themeFromTab = false; }
+  });
+
+  /* ================= keys ================= */
+  function toggleHelp(on) { const h = $('#help'); h.hidden = typeof on === 'boolean' ? !on : !h.hidden; }
+  document.addEventListener('keydown', (e) => {
+    if (U.isTyping(e.target) || e.metaKey || e.ctrlKey || e.altKey) return;
+    const k = e.key;
+    const low = k.length === 1 ? k.toLowerCase() : k;
+    const onButton = e.target && e.target.closest && e.target.closest('button, a');
+    if (k === 'ArrowRight' || k === 'PageDown' || (k === ' ' && !onButton)) { e.preventDefault(); next(e.shiftKey); }
+    else if (k === 'ArrowLeft' || k === 'PageUp') { e.preventDefault(); back(); }
+    else if (k === 'Home') { e.preventDefault(); go(0); }
+    else if (k === 'End') { e.preventDefault(); go(PRACTICE); }
+    else if (low === 'b') { e.preventDefault(); backToTopic(); }
+    else if (k === '?') { e.preventDefault(); toggleHelp(); }
+    else if (k === 'Escape') { if (!$('#help').hidden) toggleHelp(false); }
+  });
+  $('#prevBtn').addEventListener('click', back);
+  $('#nextBtn').addEventListener('click', () => next(false));
+  $('#pgBtn').addEventListener('click', openPlaygroundHere);
+  $('#gameBtn').addEventListener('click', () => SHELL.game());
+  $('#helpBtn').addEventListener('click', () => toggleHelp());
+  $$('[data-close="help"]').forEach((b) => b.addEventListener('click', () => toggleHelp(false)));
+  $('#help').addEventListener('click', (e) => { if (e.target.id === 'help') toggleHelp(false); });
+  U.onFit(() => $$('.diagram', storyEl).forEach((d) => { if (d.offsetParent) drawLinks(d, false); }));
+
+  window.STORY = { STEPS, SECTIONS, S, go, next, back, prev: back, doBuild, replay, goExtra, backToTopic };
+  renderStep(true);
+  changed();
+})();
+
+</script>
+
+</body>
+</html>

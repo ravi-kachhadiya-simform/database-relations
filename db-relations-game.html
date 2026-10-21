@@ -1,0 +1,2595 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Database Relations: the games</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ---------- Tokens (same palette as the rest of the session files) ---------- */
+:root {
+  --bg: #0f1117; --surface: #171a23; --surface-2: #1d212c; --surface-3: #262b38;
+  --border: rgba(255, 255, 255, 0.08); --border-2: rgba(255, 255, 255, 0.15);
+  --text: #eef0f5; --text-2: #c7ccd8; --muted: #949db0;
+  --brand: #ff6b47; --on-brand: #1b0c07; --brand-soft: rgba(255, 107, 71, 0.14);
+  --good: #4ade80; --bad: #ff5d73; --warn: #fbbf24;
+  --c-customers: #5b9bff; --c-orders: #ff9a3c; --c-loyalty_cards: #f5cb4c; --c-products: #5fd27a; --c-order_items: #b48cff;
+  --c-neutral: #9aa6bd; --c-x1: #5ce1e6; --c-x2: #ff8fc7; --c-x3: #c2b8ff;
+  --team-a: #ffd166; --team-b: #6ee7f9;
+  --kw: #ffffff; --str: #f9a8d4; --num: #fcd9b6; --com: #737d94; --ty: #9fb0d0; --fn: #8fd3ff;
+  --shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 14px 34px -16px rgba(0, 0, 0, 0.7);
+  --radius: 14px;
+  --f-head: 'Space Grotesk', 'Avenir Next', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --f-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --f-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+  color-scheme: dark;
+}
+:root[data-theme="light"] {
+  --bg: #eef1f6; --surface: #ffffff; --surface-2: #f6f7fa; --surface-3: #e7ebf2;
+  --border: rgba(16, 22, 38, 0.10); --border-2: rgba(16, 22, 38, 0.20);
+  --text: #121620; --text-2: #2c3446; --muted: #586174;
+  --brand: #e2451f; --on-brand: #ffffff; --brand-soft: rgba(226, 69, 31, 0.10);
+  --good: #12803a; --bad: #d1213d; --warn: #a95207;
+  --c-customers: #2160e8; --c-orders: #cf5f06; --c-loyalty_cards: #9a6f00; --c-products: #1b8539; --c-order_items: #7444d8;
+  --c-neutral: #5d6880; --c-x1: #0e7f86; --c-x2: #c0267a; --c-x3: #5b48c9;
+  --team-a: #a87800; --team-b: #0a7f99;
+  --kw: #0b0e15; --str: #b4135a; --num: #9a4a06; --com: #7a8295; --ty: #4f5f80; --fn: #1d5fa8;
+  --shadow: 0 1px 2px rgba(16, 22, 38, 0.06), 0 10px 26px -14px rgba(16, 22, 38, 0.22);
+  color-scheme: light;
+}
+
+/* ---------- Base + stage ---------- */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); }
+body { font-family: var(--f-body); color: var(--text); -webkit-font-smoothing: antialiased; }
+button, input, select, textarea { font: inherit; color: inherit; }
+a { color: inherit; }
+[hidden] { display: none !important; }
+#host { position: fixed; inset: 0; overflow: hidden; background: var(--bg); }
+#stage {
+  position: absolute; left: 50%; top: 50%; width: 1600px; height: 900px;
+  transform: translate(-50%, -50%) scale(var(--s, 1)); transform-origin: center center;
+  background: var(--bg); font-size: 20px; line-height: 1.4; overflow: hidden;
+}
+.c-customers { color: var(--c-customers); --cc: var(--c-customers); }
+.c-orders { color: var(--c-orders); --cc: var(--c-orders); }
+.c-loyalty_cards { color: var(--c-loyalty_cards); --cc: var(--c-loyalty_cards); }
+.c-products { color: var(--c-products); --cc: var(--c-products); }
+.c-order_items { color: var(--c-order_items); --cc: var(--c-order_items); }
+.c-x1 { color: var(--c-x1); --cc: var(--c-x1); }
+.c-x2 { color: var(--c-x2); --cc: var(--c-x2); }
+.c-x3 { color: var(--c-x3); --cc: var(--c-x3); }
+.t-customers { --tc: var(--c-customers); } .t-orders { --tc: var(--c-orders); } .t-loyalty_cards { --tc: var(--c-loyalty_cards); }
+.t-products { --tc: var(--c-products); } .t-order_items { --tc: var(--c-order_items); }
+.t-x1 { --tc: var(--c-x1); } .t-x2 { --tc: var(--c-x2); } .t-x3 { --tc: var(--c-x3); }
+:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; border-radius: 8px; }
+kbd { font: 600 14px var(--f-mono); padding: 2px 7px; border-radius: 6px; border: 1px solid var(--border-2); background: var(--surface-2); color: var(--text-2); }
+code.inl { font: 600 0.88em var(--f-mono); padding: 1px 6px; border-radius: 6px; background: var(--surface-3); color: var(--text); white-space: nowrap; }
+
+/* ---------- Buttons ---------- */
+.btn {
+  font: 600 18px/1.2 var(--f-body); display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 10px 16px; border-radius: 11px; border: 1px solid var(--border-2); background: var(--surface-2); color: var(--text);
+  cursor: pointer; white-space: nowrap; text-decoration: none; transition: background .18s, border-color .18s, transform .1s, opacity .18s;
+}
+.btn:hover { background: var(--surface-3); }
+.btn:active { transform: translateY(1px); }
+.btn:disabled { opacity: .45; cursor: default; }
+.btn.primary { background: var(--brand); color: var(--on-brand); border-color: transparent; }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn.ghost { background: transparent; }
+.btn.small { font-size: 16px; padding: 7px 12px; border-radius: 9px; }
+.btn.big { font-size: 22px; padding: 14px 26px; border-radius: 13px; }
+.icon-btn {
+  width: 44px; height: 44px; display: grid; place-items: center; border-radius: 12px; border: 1px solid var(--border);
+  background: var(--surface); color: var(--text-2); cursor: pointer; font: 700 19px var(--f-head); transition: background .18s, color .18s;
+}
+.icon-btn:hover { background: var(--surface-3); color: var(--text); }
+.icon-btn svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* segmented control */
+.seg { display: inline-flex; padding: 4px; gap: 4px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); }
+.seg button {
+  border: 0; background: transparent; color: var(--muted); padding: 7px 14px; border-radius: 9px; cursor: pointer;
+  font: 600 16px var(--f-body); white-space: nowrap; transition: background .18s, color .18s;
+}
+.seg button:hover { color: var(--text); }
+.seg button[aria-pressed="true"] { background: var(--surface-3); color: var(--text); box-shadow: inset 0 0 0 1px var(--border-2); }
+.seg.mono button { font-family: var(--f-mono); font-size: 15px; }
+
+/* ---------- Top bar ---------- */
+.topbar {
+  position: absolute; top: 0; left: 0; right: 0; height: 72px; display: flex; align-items: center; gap: 16px; padding: 0 22px;
+  border-bottom: 1px solid var(--border); background: color-mix(in srgb, var(--surface) 55%, var(--bg)); z-index: 20;
+}
+.brand { display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1; }
+.brand-logo { width: 42px; height: 42px; border-radius: 12px; background: var(--brand); display: grid; place-items: center; flex: none; color: var(--on-brand); box-shadow: 0 6px 18px -6px var(--brand); }
+.brand-logo svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.brand-name { font: 700 23px/1.1 var(--f-head); letter-spacing: -0.01em; white-space: nowrap; }
+.brand-sub { font-size: 15px; color: var(--muted); margin-top: 2px; white-space: nowrap; }
+.tabs { display: flex; gap: 4px; padding: 5px; border-radius: 14px; border: 1px solid var(--border); background: var(--surface); }
+.tab {
+  display: flex; align-items: center; gap: 9px; font: 600 19px var(--f-head); padding: 8px 16px; border-radius: 10px; border: 0;
+  background: transparent; color: var(--muted); cursor: pointer; text-decoration: none; transition: background .18s, color .18s;
+}
+.tab:hover { color: var(--text); }
+.tab[aria-current="page"] { background: var(--surface-3); color: var(--text); }
+.top-actions { display: flex; align-items: center; gap: 8px; flex: 1; justify-content: flex-end; }
+.pill { font: 600 14px var(--f-body); color: var(--muted); padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border); display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+.pill i { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); display: inline-block; }
+.pill.live i { background: var(--good); } .pill.wait i { background: var(--warn); } .pill.off i { background: var(--bad); }
+
+/* ---------- Code ---------- */
+.code {
+  margin: 0; font: 500 17px/1.55 var(--f-mono); color: var(--text-2); background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 12px 16px; white-space: pre; overflow: auto; box-shadow: var(--shadow); tab-size: 2;
+}
+.kw { color: var(--kw); font-weight: 700; } .str { color: var(--str); } .num { color: var(--num); }
+.com { color: var(--com); font-style: italic; } .ty { color: var(--ty); } .fn { color: var(--fn); }
+.tn { font-weight: 700; }
+.code .ln { display: block; padding: 0 6px; margin: 0 -6px; border-radius: 6px; }
+.code .ln.new { animation: lineNew 2.4s ease both; }
+@keyframes lineNew { 0%, 35% { background: color-mix(in srgb, var(--good) 26%, transparent); } 100% { background: transparent; } }
+.code .ln.hot { background: color-mix(in srgb, var(--brand) 16%, transparent); }
+
+/* ---------- Table cards ---------- */
+.tcard { position: relative; flex: none; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+.tcard::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 4px; background: var(--tc, var(--c-neutral)); }
+.tcard-head { display: flex; align-items: center; gap: 9px; padding: 11px 14px 5px; font: 700 19px var(--f-head); color: var(--tc, var(--text)); white-space: nowrap; }
+.tcard-head .alias { color: var(--muted); font: 600 16px var(--f-mono); }
+.tdot { width: 10px; height: 10px; border-radius: 3px; background: var(--tc, var(--c-neutral)); flex: none; }
+.tcard-head .badge { margin-left: auto; font: 600 13px var(--f-body); color: var(--muted); padding-left: 10px; }
+.tcard table { border-collapse: collapse; font: 500 16px var(--f-mono); width: 100%; }
+.tcard th { font: 600 14px var(--f-mono); color: var(--muted); text-align: left; padding: 5px 12px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.th-in { display: inline-flex; align-items: center; gap: 5px; }
+.tcard th.pk .th-in { color: var(--tc); }
+.tcard th.fk .th-in { color: var(--cc); }
+.uq { font: 700 10px var(--f-body); padding: 1px 5px; border-radius: 5px; border: 1px solid currentColor; letter-spacing: .02em; }
+.tcard td { padding: 0 12px; height: 34px; white-space: nowrap; color: var(--text-2); transition: background .25s, color .25s, opacity .25s; }
+.tcard td.pkc { color: var(--text); font-weight: 700; }
+.tcard td.fkc { font-weight: 700; color: var(--cc); }
+.tcard td.null { color: var(--muted); font-style: italic; font-weight: 500; }
+.tcard td.money { text-align: right; }
+.tcard tbody tr + tr td { border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent); }
+.tcard tr.hl td { background: color-mix(in srgb, var(--tc) 18%, transparent); }
+.tcard tr.dim td { opacity: .32; }
+.tcard tr.done td { opacity: .55; }
+.tcard td.on { box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--cc, var(--tc)) 75%, transparent); border-radius: 4px; }
+.tcard tr.new td { animation: rowNew 2.2s ease both; }
+@keyframes rowNew { 0%, 40% { background: color-mix(in srgb, var(--good) 28%, transparent); } 100% { background: transparent; } }
+.tcard tr.changed td.chg { animation: cellChg 2.2s ease both; }
+@keyframes cellChg { 0%, 40% { background: color-mix(in srgb, var(--warn) 32%, transparent); } 100% { background: transparent; } }
+.tcard tr.ghost td { color: var(--bad); background: color-mix(in srgb, var(--bad) 12%, transparent); text-decoration: line-through; text-decoration-thickness: 2px; }
+.tcard tr.ghost td.bad { text-decoration: none; box-shadow: inset 0 0 0 2px var(--bad); font-weight: 800; }
+.tcard tr.blocked td { background: color-mix(in srgb, var(--bad) 16%, transparent); }
+.tcard tr.leaving td { color: var(--bad); text-decoration: line-through; background: color-mix(in srgb, var(--bad) 10%, transparent); }
+.tcard .empty-row td { color: var(--muted); font: italic 500 15px var(--f-body); height: 40px; }
+.shake { animation: shake .42s ease; }
+@keyframes shake { 20% { transform: translateX(-7px); } 40% { transform: translateX(6px); } 60% { transform: translateX(-4px); } 80% { transform: translateX(2px); } }
+
+/* links between rows */
+svg.links { position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; z-index: 3; }
+.link { fill: none; stroke: var(--lc); stroke-width: 2.4; opacity: .7; transition: opacity .2s; }
+.link-dot { fill: var(--lc); }
+.link.hl { opacity: 1; stroke-width: 3.4; stroke-dasharray: 9 7; animation: flow .7s linear infinite; }
+.link.bad { stroke: var(--bad); stroke-dasharray: 6 6; opacity: 1; }
+.link.faint { opacity: .16; }
+@keyframes flow { to { stroke-dashoffset: -16; } }
+.end-label { font: 700 13px var(--f-body); fill: var(--muted); }
+
+/* ---------- Small shared bits ---------- */
+.callout { background: var(--surface); border: 1px solid var(--border-2); border-radius: 12px; padding: 12px 16px; font-size: 18px; box-shadow: var(--shadow); }
+.callout.good { border-color: color-mix(in srgb, var(--good) 55%, transparent); background: color-mix(in srgb, var(--good) 8%, var(--surface)); }
+.callout.bad { border-color: color-mix(in srgb, var(--bad) 55%, transparent); background: color-mix(in srgb, var(--bad) 8%, var(--surface)); }
+.callout.warn { border-color: color-mix(in srgb, var(--warn) 55%, transparent); background: color-mix(in srgb, var(--warn) 8%, var(--surface)); }
+.pgerr { font: 600 15px/1.45 var(--f-mono); color: var(--bad); white-space: pre-wrap; margin: 0; }
+.pgerr .d { color: var(--text-2); font-weight: 500; }
+.popin { animation: popIn .3s cubic-bezier(.2, 1.2, .4, 1) both; }
+@keyframes popIn { from { opacity: 0; transform: translateY(8px) scale(.98); } }
+.scroll { overflow: auto; scrollbar-width: thin; scrollbar-color: var(--surface-3) transparent; }
+.muted { color: var(--muted); }
+
+/* results table */
+.rtable { border-collapse: collapse; font: 500 16px var(--f-mono); width: 100%; }
+.rtable th { position: sticky; top: 0; text-align: left; font: 600 14px var(--f-mono); color: var(--muted); padding: 7px 12px; border-bottom: 1px solid var(--border); background: var(--surface-2); white-space: nowrap; z-index: 1; }
+.rtable td { padding: 6px 12px; border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent); color: var(--text-2); white-space: nowrap; vertical-align: top; }
+.rtable td.null { color: var(--muted); font-style: italic; }
+.rtable td.json { white-space: pre; color: var(--text); }
+.rtable tr.new td { animation: rowNew 1.6s ease both; }
+
+/* ---------- Overlays ---------- */
+.overlay-bg { position: absolute; inset: 0; z-index: 40; background: rgba(5, 7, 12, .58); display: grid; place-items: center; }
+:root[data-theme="light"] .overlay-bg { background: rgba(30, 36, 50, .3); }
+.sheet { background: var(--surface); border: 1px solid var(--border-2); border-radius: 18px; box-shadow: 0 30px 80px -20px rgba(0, 0, 0, .7); padding: 22px 26px; animation: popIn .25s ease both; }
+.sheet h2 { margin: 0 0 12px; font: 700 28px var(--f-head); display: flex; align-items: center; gap: 12px; }
+.sheet h2 .icon-btn { margin-left: auto; }
+.help dl { margin: 0; display: grid; grid-template-columns: 170px 1fr; gap: 9px 16px; align-items: center; font-size: 18px; }
+.help dt { display: flex; gap: 6px; flex-wrap: wrap; }
+.help dd { margin: 0; color: var(--text-2); }
+
+.toast { position: absolute; left: 50%; bottom: 26px; transform: translateX(-50%); z-index: 50; padding: 12px 18px; border-radius: 12px; background: var(--surface-3); border: 1px solid var(--border-2); font-size: 18px; box-shadow: var(--shadow); animation: popIn .25s ease both; max-width: 900px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; transition-delay: 0s !important; }
+  .link.hl { stroke-dasharray: none; }
+}
+
+/* ---------- Game shell ---------- */
+.gmain { position: absolute; top: 72px; left: 0; right: 0; bottom: 0; }
+.screen { position: absolute; inset: 0; display: flex; flex-direction: column; }
+.ghead { height: 66px; flex: none; display: flex; align-items: center; gap: 14px; padding: 0 22px; border-bottom: 1px solid var(--border); }
+.ghead .gname { font: 700 22px var(--f-head); display: flex; align-items: center; gap: 10px; }
+.ghead .round { font: 600 15px var(--f-body); color: var(--muted); padding: 5px 11px; border-radius: 999px; border: 1px solid var(--border-2); }
+.ghead .sp { flex: 1; }
+.gbody { flex: 1; min-height: 0; position: relative; padding: 18px 22px 20px; }
+.board { display: flex; gap: 8px; align-items: center; }
+.teampill { display: flex; align-items: center; gap: 10px; padding: 6px 8px 6px 12px; border-radius: 12px; border: 1px solid var(--border-2); background: var(--surface); font: 600 16px var(--f-body); transition: box-shadow .2s, border-color .2s; }
+.teampill b { font: 700 20px var(--f-mono); min-width: 54px; text-align: right; padding: 2px 8px; border-radius: 8px; background: var(--surface-3); }
+.teampill.t0 { --team: var(--team-a); } .teampill.t1 { --team: var(--team-b); }
+.teampill .dot { width: 11px; height: 11px; border-radius: 50%; background: var(--team, var(--brand)); }
+.teampill.turn { border-color: var(--team); box-shadow: 0 0 0 2px color-mix(in srgb, var(--team) 40%, transparent); }
+.teampill.turn::after { content: 'your turn'; font: 700 12px var(--f-body); color: var(--team); }
+.plus { position: absolute; z-index: 30; font: 800 26px var(--f-head); color: var(--good); pointer-events: none; animation: plusUp 1.1s ease-out both; }
+@keyframes plusUp { from { opacity: 0; transform: translateY(6px) scale(.9); } 20% { opacity: 1; } to { opacity: 0; transform: translateY(-46px) scale(1.08); } }
+#confetti { position: absolute; inset: 0; pointer-events: none; z-index: 60; }
+
+/* ---------- Home ---------- */
+.home { padding: 30px 40px 26px; gap: 22px; }
+.home-top { display: flex; align-items: flex-end; gap: 24px; }
+.home h1 { margin: 0; font: 700 50px/1.05 var(--f-head); letter-spacing: -0.02em; }
+.home .lead { margin: 8px 0 0; font-size: 20px; color: var(--text-2); max-width: 760px; }
+.modepick { margin-left: auto; display: flex; flex-direction: column; gap: 10px; align-items: flex-end; }
+.names { display: flex; gap: 8px; }
+.names input { width: 190px; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--border-2); background: var(--surface); font: 600 16px var(--f-body); }
+.names input.t0 { box-shadow: inset 4px 0 0 var(--team-a); } .names input.t1 { box-shadow: inset 4px 0 0 var(--team-b); }
+.tiles { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; flex: 1; min-height: 0; }
+.tile {
+  position: relative; display: flex; flex-direction: column; gap: 10px; padding: 20px 18px 18px; border-radius: 18px; border: 1px solid var(--border);
+  background: var(--surface); box-shadow: var(--shadow); text-align: left; cursor: pointer; overflow: hidden; color: var(--text); transition: transform .15s, border-color .2s;
+}
+.tile::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 5px; background: var(--gc); }
+.tile:hover { transform: translateY(-3px); border-color: var(--gc); }
+.tile .num { position: absolute; right: 16px; top: 16px; width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; font: 700 15px var(--f-mono); background: var(--surface-3); color: var(--muted); }
+.tile .em { font-size: 54px; line-height: 1; margin-top: 6px; }
+.tile .nm { font: 700 25px/1.12 var(--f-head); letter-spacing: -0.01em; }
+.tile .sk { font-size: 16.5px; color: var(--text-2); line-height: 1.38; }
+.tile .art { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; }
+.tile .meta { display: flex; gap: 6px; flex-wrap: wrap; }
+.tile .meta span { font: 600 13px var(--f-body); color: var(--muted); padding: 3px 9px; border-radius: 999px; border: 1px solid var(--border-2); }
+.tile .played { font: 700 14px var(--f-body); color: var(--good); }
+.ta-rush { display: flex; flex-direction: column; gap: 2px; align-items: center; }
+.ta-rush svg { width: 112px; height: 40px; }
+.ta-rush svg .n { fill: var(--surface-3); stroke: var(--muted); stroke-width: 2; }
+.ta-rush svg .l { stroke: var(--muted); stroke-width: 2.4; fill: none; }
+.ta-keys { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.ta-keys .ta-tbl { font: 700 17px var(--f-head); color: var(--c-orders); padding: 10px 26px; border-radius: 10px; border: 1px solid var(--border-2); border-top: 4px solid var(--c-orders); }
+.ta-keys .chip { font-size: 15px; padding: 7px 11px; transform: rotate(-4deg); }
+.ta-allow { display: flex; flex-direction: column; gap: 8px; align-items: center; }
+.ta-allow span { padding: 8px 16px; border-radius: 10px; border: 1px solid var(--border-2); font: 700 16px var(--f-head); }
+.ta-count { font: 800 76px/1 var(--f-mono); color: var(--c-orders); display: flex; align-items: baseline; gap: 6px; }
+.ta-count small { font: 600 17px var(--f-body); color: var(--muted); }
+.ta-build { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.ta-build code { font: 600 14px var(--f-mono); padding: 5px 10px; border-radius: 8px; border: 1px dashed var(--border-2); color: var(--text-2); }
+.ta-build code:nth-child(2) { margin-left: 18px; }
+.tile .playbtn { align-self: stretch; justify-content: center; }
+.home-foot { display: flex; align-items: center; gap: 14px; color: var(--muted); font-size: 16px; }
+
+/* ---------- Intro / interstitial / end ---------- */
+.center { display: flex; align-items: center; justify-content: center; }
+.card-xl { width: 860px; padding: 30px 34px; border-radius: 20px; background: var(--surface); border: 1px solid var(--border-2); box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 14px; }
+.card-xl h2 { margin: 0; font: 700 40px/1.1 var(--f-head); display: flex; align-items: center; gap: 14px; }
+.card-xl ol { margin: 0; padding-left: 26px; font-size: 20px; line-height: 1.5; color: var(--text-2); }
+.card-xl .row { display: flex; gap: 10px; align-items: center; margin-top: 6px; }
+.end-score { font: 800 64px/1 var(--f-head); }
+.review { max-height: 330px; display: flex; flex-direction: column; gap: 8px; }
+.review .it { padding: 8px 12px; border-radius: 10px; background: var(--surface-2); border-left: 4px solid var(--bad); font-size: 16px; line-height: 1.4; }
+.review .it.ok { border-left-color: var(--good); }
+.review .it b { font-family: var(--f-head); }
+
+/* ---------- Rush ---------- */
+.rush { display: flex; flex-direction: column; height: 100%; gap: 16px; }
+.rush-top { display: flex; align-items: center; gap: 18px; }
+.timebar { flex: 1; height: 14px; border-radius: 999px; background: var(--surface-3); overflow: hidden; }
+.timebar i { display: block; height: 100%; width: 100%; background: var(--brand); border-radius: 999px; transform-origin: left; }
+.timebar.low i { background: var(--bad); }
+.rush-stat { font: 700 22px var(--f-mono); min-width: 70px; text-align: right; }
+.rush-stat small { font: 600 13px var(--f-body); color: var(--muted); display: block; text-align: right; }
+.mult { font: 800 24px var(--f-head); color: var(--brand); min-width: 54px; }
+.rush-mid { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; position: relative; }
+.pcard {
+  display: flex; align-items: center; gap: 26px; padding: 28px 40px; border-radius: 22px; background: var(--surface); border: 2px solid var(--border-2);
+  box-shadow: 0 24px 60px -24px rgba(0, 0, 0, .7); font: 700 44px/1.1 var(--f-head); cursor: grab; touch-action: none; user-select: none; transition: transform .45s cubic-bezier(.3, .9, .3, 1), opacity .45s;
+}
+.pcard .ent { display: flex; align-items: center; gap: 14px; }
+.pcard .ent span:first-child { font-size: 54px; }
+.pcard .amp { color: var(--muted); font-size: 34px; }
+.pcard.drag { transition: none; cursor: grabbing; }
+.pcard.ok { border-color: var(--good); }
+.pcard.bad { border-color: var(--bad); }
+.why { min-height: 64px; max-width: 1100px; text-align: center; font-size: 20px; color: var(--text-2); line-height: 1.4; }
+.why b { color: var(--text); }
+.bins { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; height: 196px; }
+.bin { position: relative; border-radius: 18px; border: 2px dashed var(--border-2); background: var(--surface); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; cursor: pointer; color: var(--text); font: 700 26px var(--f-head); transition: border-color .2s, background .2s, transform .12s; }
+.bin:hover, .bin.over { border-style: solid; border-color: var(--brand); }
+.bin .k { position: absolute; left: 14px; top: 12px; font: 700 14px var(--f-mono); color: var(--muted); }
+.bin svg { width: 150px; height: 56px; }
+.bin svg .n { fill: var(--surface-3); stroke: var(--text-2); stroke-width: 2; }
+.bin svg .l { stroke: var(--text-2); stroke-width: 2.4; fill: none; }
+.bin .sub { font: 600 14px var(--f-body); color: var(--muted); }
+.bin.good { border-color: var(--good); border-style: solid; background: color-mix(in srgb, var(--good) 14%, var(--surface)); }
+.bin.wrong { border-color: var(--bad); border-style: solid; background: color-mix(in srgb, var(--bad) 12%, var(--surface)); }
+
+/* ---------- Key Builder ---------- */
+.kb { display: flex; flex-direction: column; height: 100%; gap: 14px; }
+.story { font: 600 24px/1.35 var(--f-head); display: flex; align-items: center; gap: 14px; }
+.story .ask { font-size: 16px; color: var(--muted); font-family: var(--f-body); font-weight: 500; }
+.kb-board { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 360px 1fr; gap: 22px; align-items: stretch; }
+.kb-board.self { grid-template-columns: 1fr 360px; }
+.ktable { border-radius: 16px; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow); display: flex; flex-direction: column; overflow: hidden; position: relative; }
+.ktable::before { content: ''; height: 5px; background: var(--tc, var(--c-neutral)); flex: none; }
+.ktable .kh { font: 700 24px var(--f-head); padding: 12px 16px 6px; color: var(--tc); display: flex; gap: 10px; align-items: center; }
+.ktable .kc { font: 500 18px var(--f-mono); padding: 5px 16px; color: var(--text-2); border-top: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
+.ktable .kc.pk { color: var(--text); font-weight: 700; }
+.drop { margin: 10px 12px 12px; border: 2px dashed var(--border-2); border-radius: 12px; min-height: 64px; display: flex; flex-direction: column; gap: 8px; padding: 8px; color: var(--muted); font-size: 15px; justify-content: center; transition: border-color .2s, background .2s; cursor: pointer; }
+.drop.target { border-color: var(--brand); background: var(--brand-soft); color: var(--text); }
+.drop .hint { text-align: center; }
+.mid { border-radius: 16px; border: 2px dashed var(--border-2); display: flex; flex-direction: column; align-items: stretch; justify-content: center; color: var(--muted); text-align: center; font-size: 17px; padding: 12px; cursor: pointer; transition: border-color .2s, background .2s; }
+.mid.target { border-color: var(--brand); background: var(--brand-soft); color: var(--text); }
+.mid.filled { border-style: solid; border-color: var(--border); background: var(--surface); padding: 0; cursor: default; }
+.mid.filled .drop { flex: 1; }
+.placed { display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 10px; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--border-2); font: 700 17px var(--f-mono); color: var(--cc); }
+.placed .x { margin-left: auto; }
+.uqbtn { font: 700 12px var(--f-body); padding: 3px 8px; border-radius: 7px; border: 1px dashed var(--border-2); background: transparent; color: var(--muted); cursor: pointer; }
+.uqbtn[aria-pressed="true"] { border-style: solid; border-color: var(--warn); color: var(--warn); background: color-mix(in srgb, var(--warn) 12%, transparent); }
+.pkpair { margin: 0 12px 12px; }
+.tray { display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 10px 14px; border-radius: 14px; background: var(--surface); border: 1px solid var(--border); }
+.chip { display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 12px; border: 2px solid var(--cc); background: color-mix(in srgb, var(--cc) 12%, var(--surface)); font: 700 18px var(--f-mono); color: var(--text); cursor: grab; user-select: none; }
+.chip.sel { box-shadow: 0 0 0 3px var(--brand); }
+.chip .to { font: 600 14px var(--f-body); color: var(--muted); }
+.kb-foot { display: flex; align-items: flex-start; gap: 12px; min-height: 52px; }
+.verdictbox { flex: 1; font-size: 18px; line-height: 1.4; }
+.sqlpop .code { font-size: 15px; max-height: 330px; }
+
+/* ---------- Allow + Count + Build shared ---------- */
+.split { display: grid; grid-template-columns: 610px 1fr; gap: 20px; height: 100%; }
+.lcol { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+.bigq { font: 700 30px/1.15 var(--f-head); }
+.sqlcard { font-size: 21px; line-height: 1.5; padding: 16px 20px; }
+.votes { display: flex; flex-direction: column; gap: 8px; }
+.vrow { display: flex; align-items: center; gap: 10px; }
+.vrow .who { width: 150px; font: 700 16px var(--f-body); display: flex; align-items: center; gap: 8px; }
+.vrow .who i { width: 10px; height: 10px; border-radius: 50%; background: var(--team, var(--brand)); }
+.vrow.t0 { --team: var(--team-a); } .vrow.t1 { --team: var(--team-b); }
+.vbtn { flex: 1; padding: 13px 14px; border-radius: 12px; border: 2px solid var(--border-2); background: var(--surface); cursor: pointer; font: 700 19px var(--f-head); color: var(--text); transition: border-color .15s, background .15s; }
+.vbtn:hover { border-color: var(--team, var(--brand)); }
+.vbtn[aria-pressed="true"] { border-color: var(--team, var(--brand)); background: color-mix(in srgb, var(--team, var(--brand)) 18%, var(--surface)); }
+.vbtn.right { border-color: var(--good) !important; background: color-mix(in srgb, var(--good) 18%, var(--surface)) !important; }
+.vbtn.wrongpick { border-color: var(--bad) !important; background: color-mix(in srgb, var(--bad) 14%, var(--surface)) !important; }
+.vbtn:disabled { cursor: default; }
+.vbtn .mark { margin-left: 6px; }
+.outcome { border-radius: 14px; padding: 12px 16px; font-size: 18px; line-height: 1.4; }
+.outcome.ok { background: color-mix(in srgb, var(--good) 11%, var(--surface)); border: 1px solid color-mix(in srgb, var(--good) 50%, transparent); }
+.outcome.err { background: color-mix(in srgb, var(--bad) 9%, var(--surface)); border: 1px solid color-mix(in srgb, var(--bad) 50%, transparent); }
+.outcome .tagline { font: 700 17px var(--f-mono); color: var(--good); margin-bottom: 4px; }
+.actions { display: flex; gap: 10px; margin-top: auto; }
+.rcol { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+.tables { position: relative; flex: 1; min-height: 0; display: flex; align-items: flex-start; justify-content: center; gap: 80px; padding: 18px; overflow: hidden; }
+.tables .tcard td { height: 31px; font-size: 15.5px; }
+.answer-big { font: 800 46px/1 var(--f-head); }
+
+/* count */
+.cstage { position: relative; flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; padding: 10px; overflow: hidden; }
+.cstage .jp-cards { display: flex; gap: 74px; align-items: flex-start; }
+.cstage .tcard td { height: 30px; font-size: 16px; padding: 0 10px; }
+.cstage .tcard th { padding: 4px 10px; font-size: 14px; }
+.ccap { padding: 8px 12px; font-size: 16px; min-height: 44px; display: flex; align-items: center; }
+.cres { height: 210px; padding: 6px 10px; }
+.tcard tr.miss td { background: color-mix(in srgb, var(--bad) 16%, transparent); opacity: 1; }
+
+/* build */
+.bld { display: flex; flex-direction: column; height: 100%; gap: 14px; }
+.goal { font: 700 28px/1.2 var(--f-head); display: flex; gap: 12px; align-items: baseline; }
+.goal small { font: 500 16px var(--f-body); color: var(--muted); }
+.bld-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.slots { padding: 14px; display: flex; flex-direction: column; gap: 7px; overflow: auto; }
+.slot { font: 600 19px var(--f-mono); padding: 9px 12px; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--border-2); cursor: pointer; white-space: pre; }
+.slot:hover { border-color: var(--bad); }
+.slot.badline { border-color: var(--bad); background: color-mix(in srgb, var(--bad) 12%, var(--surface-2)); }
+.slot.okline { border-color: var(--good); }
+.slot.empty { border-style: dashed; color: var(--muted); cursor: default; font-family: var(--f-body); font-size: 16px; }
+.pieces { padding: 14px; display: flex; flex-direction: column; gap: 8px; overflow: auto; }
+.piece { font: 600 18px var(--f-mono); padding: 9px 12px; border-radius: 10px; border: 1px dashed var(--border-2); background: transparent; color: var(--text); cursor: pointer; text-align: left; white-space: pre; }
+.piece:hover { border-style: solid; background: var(--surface-2); }
+.piece[aria-pressed="true"] { border-style: solid; border-color: var(--brand); background: var(--brand-soft); }
+.bld-foot { display: flex; align-items: flex-start; gap: 12px; min-height: 56px; }
+.bld-res { max-height: 220px; }
+
+
+/* ---------- Space + P / G / S ---------- */
+.keyhint { font: 600 15px var(--f-body); color: var(--muted); white-space: nowrap; margin-right: 6px; }
+.keyhint kbd { font-size: 13px; }
+
+.timerpick { display: flex; align-items: center; gap: 14px; font-size: 19px; }
+</style>
+</head>
+<body>
+<div id="host"><div id="stage">
+<header class="topbar"><div class="brand"><div class="brand-logo"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3.5" width="7.5" height="7.5" rx="1.8"/><rect x="13.5" y="13" width="7.5" height="7.5" rx="1.8"/><path d="M10.5 7.2h3.2a2.3 2.3 0 0 1 2.3 2.3V13"/></svg></div><div><div class="brand-name">Database Relations</div><div class="brand-sub">Five games</div></div></div><nav class="tabs" aria-label="Session files"><a class="tab" href="db-relations-story.html" data-page="story" title="Story (Space + S)">📖 Story</a><a class="tab" href="db-relations-playground.html" data-page="playground" title="Playground (Space + P)">🧪 Playground</a><a class="tab" href="db-relations-game.html" data-page="game" title="Game (Space + G)" aria-current="page">🎮 Game</a></nav><div class="top-actions"><span class="keyhint" title="Hold Space, then press P, G or S"><kbd>Space</kbd> + <kbd>P</kbd> / <kbd>G</kbd> / <kbd>S</kbd></span><button class="icon-btn" id="helpBtn" title="Keyboard (?)" aria-label="Keyboard shortcuts">?</button><button class="icon-btn" id="themeBtn" title="Light or dark (T)" aria-label="Toggle theme"><svg id="themeIcon" viewBox="0 0 24 24"></svg></button><button class="icon-btn" id="fsBtn" title="Full screen (F)" aria-label="Toggle full screen"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button></div></header>
+<main class="gmain" id="gmain"></main><canvas id="confetti" aria-hidden="true"></canvas>
+</div></div>
+<script>
+window.STORE = {"slice":{"customers":[{"id":1,"first_name":"Emma","last_name":"Carter","email":"emma.carter@example.com","referred_by":null},{"id":2,"first_name":"John","last_name":"Smith","email":"john.smith@example.net","referred_by":null},{"id":3,"first_name":"Olivia","last_name":"Brooks","email":"olivia.brooks@example.org","referred_by":1},{"id":4,"first_name":"James","last_name":"Walker","email":"jwalker@example.com","referred_by":2},{"id":5,"first_name":"Mia","last_name":"Thompson","email":"mia.thompson@example.net","referred_by":1}],"loyalty_cards":[{"id":1,"customer_id":1,"card_number":"7700 0001 2648","tier":"silver"},{"id":2,"customer_id":2,"card_number":"7700 0002 5296","tier":"bronze"},{"id":3,"customer_id":5,"card_number":"7700 0003 3782","tier":"bronze"},{"id":4,"customer_id":3,"card_number":"7700 0004 2673","tier":"bronze"}],"products":[{"id":1,"name":"Mechanical Keyboard 75%","unit_price":89.0},{"id":2,"name":"Wireless Mouse","unit_price":29.99},{"id":3,"name":"USB-C Hub 7-in-1","unit_price":49.99},{"id":4,"name":"Laptop Stand","unit_price":34.99},{"id":5,"name":"1080p Webcam","unit_price":59.99},{"id":6,"name":"Felt Desk Mat","unit_price":24.99}],"orders":[{"id":1001,"customer_id":1,"status":"delivered","placed_on":"2025-11-05"},{"id":1002,"customer_id":2,"status":"delivered","placed_on":"2025-11-07"},{"id":1003,"customer_id":3,"status":"delivered","placed_on":"2025-11-12"},{"id":1007,"customer_id":4,"status":"delivered","placed_on":"2025-11-28"},{"id":1026,"customer_id":1,"status":"delivered","placed_on":"2026-01-19"},{"id":1098,"customer_id":1,"status":"delivered","placed_on":"2026-08-24"}],"order_items":[{"order_id":1001,"product_id":1,"quantity":1,"unit_price":99.0},{"order_id":1001,"product_id":6,"quantity":1,"unit_price":24.99},{"order_id":1002,"product_id":2,"quantity":1,"unit_price":29.99},{"order_id":1002,"product_id":3,"quantity":1,"unit_price":49.99},{"order_id":1003,"product_id":4,"quantity":1,"unit_price":34.99},{"order_id":1007,"product_id":2,"quantity":1,"unit_price":29.99},{"order_id":1007,"product_id":5,"quantity":1,"unit_price":59.99},{"order_id":1026,"product_id":2,"quantity":1,"unit_price":29.99},{"order_id":1098,"product_id":3,"quantity":1,"unit_price":49.99},{"order_id":1098,"product_id":5,"quantity":1,"unit_price":59.99}]},"next":{"customers":101,"loyalty_cards":87,"products":101,"orders":1121}};
+</script>
+<script>
+/* A tiny copy of the store database that follows PostgreSQL's rules.
+   Statements are plain objects. sqlOf(stmt) prints the PostgreSQL text,
+   run(stmt) applies it and returns what Postgres would say. */
+(function () {
+  const COLS = {
+    customers: [
+      { name: 'id', type: 'bigint', identity: true, notNull: true },
+      { name: 'first_name', type: 'text', notNull: true },
+      { name: 'last_name', type: 'text', notNull: true },
+      { name: 'email', type: 'text', notNull: true },
+      { name: 'referred_by', type: 'bigint' },
+    ],
+    loyalty_cards: [
+      { name: 'id', type: 'bigint', identity: true, notNull: true },
+      { name: 'customer_id', type: 'bigint', notNull: true },
+      { name: 'card_number', type: 'text', notNull: true },
+      { name: 'tier', type: 'text', notNull: true, def: 'bronze' },
+    ],
+    products: [
+      { name: 'id', type: 'bigint', identity: true, notNull: true },
+      { name: 'name', type: 'text', notNull: true },
+      { name: 'unit_price', type: 'numeric', notNull: true },
+    ],
+    orders: [
+      { name: 'id', type: 'bigint', identity: true, notNull: true },
+      { name: 'customer_id', type: 'bigint', notNull: true },
+      { name: 'status', type: 'text', notNull: true, def: 'processing' },
+      { name: 'placed_on', type: 'date', notNull: true, def: '$today' },
+    ],
+    order_items: [
+      { name: 'order_id', type: 'bigint', notNull: true },
+      { name: 'product_id', type: 'bigint', notNull: true },
+      { name: 'quantity', type: 'integer', notNull: true },
+      { name: 'unit_price', type: 'numeric', notNull: true },
+    ],
+  };
+  const TABLES = ['customers', 'loyalty_cards', 'products', 'orders', 'order_items'];
+  const PK = { customers: ['id'], loyalty_cards: ['id'], products: ['id'], orders: ['id'], order_items: ['order_id', 'product_id'] };
+  const UNIQUES = {
+    customers: [{ name: 'customers_email_key', cols: ['email'] }],
+    loyalty_cards: [{ name: 'loyalty_cards_customer_id_key', cols: ['customer_id'] },
+                    { name: 'loyalty_cards_card_number_key', cols: ['card_number'] }],
+    products: [], orders: [], order_items: [],
+  };
+  const CHECKS = {
+    customers: [], orders: [],
+    loyalty_cards: [{ name: 'loyalty_cards_tier_check', ok: (r) => r.tier === null || ['bronze', 'silver', 'gold'].includes(r.tier) }],
+    products: [{ name: 'products_unit_price_check', ok: (r) => r.unit_price === null || r.unit_price >= 0 }],
+    order_items: [{ name: 'order_items_quantity_check', ok: (r) => r.quantity === null || r.quantity > 0 }],
+  };
+  const FKS = [
+    { name: 'customers_referred_by_fkey', t: 'customers', cols: ['referred_by'], ref: 'customers', refCols: ['id'], onDelete: 'set null' },
+    { name: 'loyalty_cards_customer_id_fkey', t: 'loyalty_cards', cols: ['customer_id'], ref: 'customers', refCols: ['id'], onDelete: 'cascade' },
+    { name: 'orders_customer_id_fkey', t: 'orders', cols: ['customer_id'], ref: 'customers', refCols: ['id'], onDelete: 'no action' },
+    { name: 'order_items_order_id_fkey', t: 'order_items', cols: ['order_id'], ref: 'orders', refCols: ['id'], onDelete: 'cascade' },
+    { name: 'order_items_product_id_fkey', t: 'order_items', cols: ['product_id'], ref: 'products', refCols: ['id'], onDelete: 'no action' },
+  ];
+  const MONEY = new Set(['unit_price']);
+
+  function today() { return new Date().toISOString().slice(0, 10); }
+  function keyOf(t, row) { return PK[t].map((c) => row[c]).join(':'); }
+  function colDef(t, name) { return COLS[t].find((c) => c.name === name); }
+
+  /* how Postgres prints a value inside DETAIL lines */
+  function detailVal(t, col, v) {
+    if (v === null || v === undefined) return 'null';
+    const d = colDef(t, col);
+    if (d && d.type === 'numeric') return Number(v).toFixed(2);
+    return String(v);
+  }
+  /* how a value is written in SQL */
+  function lit(v, col) {
+    if (v === null || v === undefined) return 'NULL';
+    if (typeof v === 'number') return MONEY.has(col) ? v.toFixed(2) : String(v);
+    if (v === true) return 'true';
+    if (v === false) return 'false';
+    return "'" + String(v).replace(/'/g, "''") + "'";
+  }
+  function whereSQL(where) {
+    return Object.entries(where).map(([c, v]) => (v === null ? `${c} IS NULL` : `${c} = ${lit(v, c)}`)).join('\n  AND ');
+  }
+
+  function sqlOf(s) {
+    switch (s.op) {
+      case 'insert':
+        return `INSERT INTO ${s.table} (${s.cols.join(', ')})` +
+          (s.overriding ? '\nOVERRIDING SYSTEM VALUE' : '') +
+          `\nVALUES (${s.vals.map((v, i) => lit(v, s.cols[i])).join(', ')})` +
+          (s.returning ? `\nRETURNING ${s.returning.join(', ')}` : '') + ';';
+      case 'update':
+        return `UPDATE ${s.table}\nSET ${Object.entries(s.set).map(([c, v]) => `${c} = ${lit(v, c)}`).join(', ')}\nWHERE ${whereSQL(s.where)};`;
+      case 'delete':
+        return `DELETE FROM ${s.table}\nWHERE ${whereSQL(s.where)};`;
+      case 'dropConstraint':
+        return `ALTER TABLE ${s.table}\n  DROP CONSTRAINT ${s.name};`;
+      case 'addUnique':
+        return `ALTER TABLE ${s.table}\n  ADD CONSTRAINT ${s.name} UNIQUE (${s.cols.join(', ')});`;
+      default:
+        return '';
+    }
+  }
+
+  class DB {
+    constructor(seed, next) {
+      this.t = {};
+      for (const t of TABLES) this.t[t] = (seed[t] || []).map((r) => ({ ...r }));
+      this.seq = { ...next };
+      this.off = new Set();
+      this.today = today;
+    }
+    clone() {
+      const d = new DB(this.t, this.seq);
+      d.off = new Set(this.off);
+      d.today = this.today;
+      return d;
+    }
+    rows(t) { return this.t[t]; }
+    find(t, where) { return this.t[t].filter((r) => Object.entries(where).every(([c, v]) => r[c] === v)); }
+    get(t, id) { return this.t[t].find((r) => r.id === id) || null; }
+    isOn(name) { return !this.off.has(name); }
+    uniquesOf(t) { return UNIQUES[t].filter((u) => !this.off.has(u.name)); }
+
+    nextval(t) { const v = this.seq[t]; this.seq[t] = v + 1; return v; }
+
+    fail(code, kind, message, extra) { return { ok: false, error: { code, kind, message, ...extra } }; }
+
+    /* NOT NULL, CHECK, UNIQUE, then FOREIGN KEY: the order Postgres checks them */
+    checkRow(t, row, selfKey, changed) {
+      const failing = () => `Failing row contains (${COLS[t].map((c) => detailVal(t, c.name, row[c.name])).join(', ')}).`;
+      for (const c of COLS[t]) {
+        if (c.notNull && (row[c.name] === null || row[c.name] === undefined)) {
+          return this.fail('23502', 'notnull', `null value in column "${c.name}" of relation "${t}" violates not-null constraint`,
+            { detail: failing(), table: t, column: c.name, row });
+        }
+      }
+      const checks = [...CHECKS[t]].sort((a, b) => (a.name < b.name ? -1 : 1));
+      for (const ck of checks) {
+        if (!ck.ok(row)) {
+          return this.fail('23514', 'check', `new row for relation "${t}" violates check constraint "${ck.name}"`,
+            { detail: failing(), table: t, constraint: ck.name, row });
+        }
+      }
+      const uniq = [{ name: `${t}_pkey`, cols: PK[t], pk: true }, ...this.uniquesOf(t)];
+      for (const u of uniq) {
+        if (u.cols.some((c) => row[c] === null)) continue;
+        const clash = this.t[t].find((r) => keyOf(t, r) !== selfKey && u.cols.every((c) => r[c] === row[c]));
+        if (clash) {
+          return this.fail('23505', u.pk ? 'pk' : 'unique', `duplicate key value violates unique constraint "${u.name}"`,
+            { detail: `Key (${u.cols.join(', ')})=(${u.cols.map((c) => detailVal(t, c, row[c])).join(', ')}) already exists.`,
+              table: t, constraint: u.name, cols: u.cols, row, clashKey: keyOf(t, clash) });
+        }
+      }
+      for (const fk of FKS) {
+        if (fk.t !== t) continue;
+        if (changed && !fk.cols.some((c) => changed.includes(c))) continue;
+        if (fk.cols.some((c) => row[c] === null)) continue;
+        const parent = this.t[fk.ref].find((r) => fk.refCols.every((rc, i) => r[rc] === row[fk.cols[i]]));
+        if (!parent) {
+          return this.fail('23503', 'fk', `insert or update on table "${t}" violates foreign key constraint "${fk.name}"`,
+            { detail: `Key (${fk.cols.join(', ')})=(${fk.cols.map((c) => detailVal(t, c, row[c])).join(', ')}) is not present in table "${fk.ref}".`,
+              table: t, constraint: fk.name, cols: fk.cols, ref: fk.ref, row });
+        }
+      }
+      return null;
+    }
+
+    run(s) {
+      const before = { ...this.seq };
+      const res = this[s.op](s);
+      res.sql = sqlOf(s);
+      res.consumed = Object.keys(this.seq).filter((t) => this.seq[t] !== before[t]).map((t) => ({ table: t, from: before[t], to: this.seq[t] - 1 }));
+      return res;
+    }
+
+    insert(s) {
+      const t = s.table;
+      for (const c of COLS[t]) {
+        if (c.identity && s.cols.includes(c.name) && !s.overriding) {
+          return this.fail('428C9', 'identity', `cannot insert a non-DEFAULT value into column "${c.name}"`,
+            { detail: `Column "${c.name}" is an identity column defined as GENERATED ALWAYS.`, hint: 'Use OVERRIDING SYSTEM VALUE to override.', table: t, column: c.name });
+        }
+      }
+      const row = {};
+      for (const c of COLS[t]) {
+        const i = s.cols.indexOf(c.name);
+        if (i >= 0) row[c.name] = s.vals[i];
+        else if (c.identity) row[c.name] = this.nextval(t);
+        else if (c.def === '$today') row[c.name] = this.today();
+        else if (c.def !== undefined) row[c.name] = c.def;
+        else row[c.name] = null;
+      }
+      const e = this.checkRow(t, row, null, null);
+      if (e) return e;
+      this.t[t].push(row);
+      const out = { ok: true, tag: 'INSERT 0 1', changes: { inserted: [{ table: t, key: keyOf(t, row), row }], updated: [], deleted: [], nulled: [] } };
+      if (s.returning) out.returning = s.returning.map((c) => [c, row[c]]);
+      return out;
+    }
+
+    update(s) {
+      const t = s.table;
+      for (const c of COLS[t]) {
+        if (c.identity && c.name in s.set) {
+          return this.fail('428C9', 'identity', `column "${c.name}" can only be updated to DEFAULT`,
+            { detail: `Column "${c.name}" is an identity column defined as GENERATED ALWAYS.`, table: t, column: c.name });
+        }
+      }
+      const targets = this.find(t, s.where);
+      const changedCols = Object.keys(s.set);
+      const next = [];
+      for (const r of targets) {
+        const nr = { ...r, ...s.set };
+        const e = this.checkRow(t, nr, keyOf(t, r), changedCols);
+        if (e) return e;
+        next.push([r, nr]);
+      }
+      const updated = [];
+      for (const [r, nr] of next) {
+        const before = { ...r };
+        Object.assign(r, nr);
+        updated.push({ table: t, key: keyOf(t, r), cols: changedCols, before, row: r });
+      }
+      return { ok: true, tag: `UPDATE ${targets.length}`, changes: { inserted: [], updated, deleted: [], nulled: [] } };
+    }
+
+    delete(s) {
+      const t0 = s.table;
+      const targets = this.find(t0, s.where);
+      const doomed = new Map();
+      const isDoomed = (t, k) => doomed.has(t + '|' + k);
+      const deleted = [];
+      const pendingNull = [];
+      const pendingCheck = [];
+      const queue = targets.map((r) => ({ t: t0, row: r, via: null }));
+      while (queue.length) {
+        const { t, row, via } = queue.shift();
+        const k = keyOf(t, row);
+        if (isDoomed(t, k)) continue;
+        doomed.set(t + '|' + k, true);
+        deleted.push({ table: t, key: k, row: { ...row }, via });
+        for (const fk of FKS) {
+          if (fk.ref !== t) continue;
+          const kids = this.t[fk.t].filter((c) => fk.cols.every((col, i) => c[col] !== null && c[col] === row[fk.refCols[i]]));
+          for (const kid of kids) {
+            if (fk.onDelete === 'cascade') queue.push({ t: fk.t, row: kid, via: fk });
+            else if (fk.onDelete === 'set null') pendingNull.push({ fk, kid, parent: row });
+            else pendingCheck.push({ fk, kid, parent: row });
+          }
+        }
+      }
+      for (const p of pendingCheck) {
+        if (!isDoomed(p.fk.t, keyOf(p.fk.t, p.kid))) {
+          const fk = p.fk;
+          return this.fail('23503', 'fk-delete', `update or delete on table "${fk.ref}" violates foreign key constraint "${fk.name}" on table "${fk.t}"`,
+            { detail: `Key (${fk.refCols.join(', ')})=(${fk.refCols.map((c) => detailVal(fk.ref, c, p.parent[c])).join(', ')}) is still referenced from table "${fk.t}".`,
+              table: fk.ref, constraint: fk.name, child: fk.t, parentKey: keyOf(fk.ref, p.parent),
+              blockers: pendingCheck.filter((q) => q.fk === fk && !isDoomed(fk.t, keyOf(fk.t, q.kid))).map((q) => keyOf(fk.t, q.kid)) });
+        }
+      }
+      const nulled = [];
+      for (const p of pendingNull) {
+        if (isDoomed(p.fk.t, keyOf(p.fk.t, p.kid))) continue;
+        for (const c of p.fk.cols) p.kid[c] = null;
+        nulled.push({ table: p.fk.t, key: keyOf(p.fk.t, p.kid), cols: p.fk.cols, fk: p.fk, row: p.kid });
+      }
+      for (const tb of TABLES) this.t[tb] = this.t[tb].filter((r) => !isDoomed(tb, keyOf(tb, r)));
+      return { ok: true, tag: `DELETE ${targets.length}`, changes: { inserted: [], updated: [], deleted, nulled } };
+    }
+
+    dropConstraint(s) {
+      const u = UNIQUES[s.table].find((x) => x.name === s.name);
+      if (!u || this.off.has(s.name)) {
+        return this.fail('42704', 'other', `constraint "${s.name}" of relation "${s.table}" does not exist`, { table: s.table });
+      }
+      this.off.add(s.name);
+      return { ok: true, tag: 'ALTER TABLE', changes: { inserted: [], updated: [], deleted: [], nulled: [] } };
+    }
+
+    addUnique(s) {
+      if (!this.off.has(s.name)) return this.fail('42P07', 'other', `relation "${s.name}" already exists`, { table: s.table });
+      const seen = new Map();
+      const dups = [];
+      for (const r of this.t[s.table]) {
+        const k = s.cols.map((c) => r[c]).join('|');
+        if (seen.has(k)) dups.push(r);
+        else seen.set(k, r);
+      }
+      if (dups.length) {
+        dups.sort((a, b) => (a[s.cols[0]] < b[s.cols[0]] ? -1 : 1));
+        const r = dups[0];
+        return this.fail('23505', 'unique', `could not create unique index "${s.name}"`,
+          { detail: `Key (${s.cols.join(', ')})=(${s.cols.map((c) => detailVal(s.table, c, r[c])).join(', ')}) is duplicated.`, table: s.table, constraint: s.name });
+      }
+      this.off.delete(s.name);
+      return { ok: true, tag: 'ALTER TABLE', changes: { inserted: [], updated: [], deleted: [], nulled: [] } };
+    }
+  }
+
+  const SCHEMA_SQL = `CREATE TABLE customers (
+  id          bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  first_name  text   NOT NULL,
+  last_name   text   NOT NULL,
+  email       text   NOT NULL UNIQUE,
+  referred_by bigint REFERENCES customers (id) ON DELETE SET NULL
+);
+
+CREATE TABLE loyalty_cards (
+  id          bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  customer_id bigint NOT NULL UNIQUE
+                     REFERENCES customers (id) ON DELETE CASCADE,
+  card_number text   NOT NULL UNIQUE,
+  tier        text   NOT NULL DEFAULT 'bronze'
+                     CHECK (tier IN ('bronze', 'silver', 'gold'))
+);
+
+CREATE TABLE products (
+  id         bigint        GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  name       text          NOT NULL,
+  unit_price numeric(10,2) NOT NULL CHECK (unit_price >= 0)
+);
+
+CREATE TABLE orders (
+  id          bigint GENERATED ALWAYS AS IDENTITY (START WITH 1001) PRIMARY KEY,
+  customer_id bigint NOT NULL REFERENCES customers (id),
+  status      text   NOT NULL DEFAULT 'processing',
+  placed_on   date   NOT NULL DEFAULT current_date
+);
+
+CREATE TABLE order_items (
+  order_id   bigint        NOT NULL REFERENCES orders (id) ON DELETE CASCADE,
+  product_id bigint        NOT NULL REFERENCES products (id),
+  quantity   integer       NOT NULL CHECK (quantity > 0),
+  unit_price numeric(10,2) NOT NULL,
+  PRIMARY KEY (order_id, product_id)
+);
+
+-- Postgres indexes primary keys and UNIQUE columns for you.
+-- Foreign keys are not indexed, so we add those ourselves.
+CREATE INDEX ON orders (customer_id);
+CREATE INDEX ON order_items (product_id);
+CREATE INDEX ON customers (referred_by);`;
+
+  const api = { DB, COLS, PK, UNIQUES, CHECKS, FKS, TABLES, sqlOf, lit, keyOf, detailVal, SCHEMA_SQL };
+  if (typeof window !== 'undefined') window.Engine = api;
+  if (typeof globalThis !== 'undefined') globalThis.Engine = api;
+})();
+
+</script>
+<script>
+/* SQL highlighting + a small SELECT model that prints PostgreSQL, runs on the
+   in-memory tables, and explains itself one driving row at a time. */
+(function () {
+  const KW = new Set(('SELECT FROM JOIN LEFT RIGHT INNER OUTER FULL CROSS ON WHERE GROUP BY ORDER AS AND OR NOT NULL IS INSERT INTO ' +
+    'VALUES UPDATE SET DELETE CREATE TABLE PRIMARY KEY REFERENCES UNIQUE CHECK DEFAULT GENERATED ALWAYS IDENTITY INDEX ALTER ' +
+    'ADD DROP CONSTRAINT RETURNING OVERRIDING SYSTEM VALUE CASCADE RESTRICT NO ACTION BEGIN COMMIT ROLLBACK HAVING LIMIT OFFSET ' +
+    'DISTINCT IN LIKE ILIKE WITH START FILTER TRUE FALSE ASC DESC NULLS LAST FIRST CASE WHEN THEN ELSE END EXISTS UNION ALL ANY ' +
+    'IF COLUMN RESTART USING EXPLAIN ANALYZE TRUNCATE SHOW').split(' '));
+  const TYPES = new Set('bigint integer int text numeric date timestamptz timestamp boolean json jsonb serial bigserial varchar uuid real'.split(' '));
+  const FUNCS = new Set('count sum avg min max json_agg jsonb_agg json_build_object jsonb_build_object coalesce now current_date string_agg array_agg lower upper pg_get_constraintdef'.split(' '));
+  const KNOWN = new Set(['customers', 'orders', 'loyalty_cards', 'products', 'order_items']);
+
+  function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+  /* tables: optional { name: colorKey } for tables that aren't in the store */
+  function highlight(sql, tables) {
+    const extra = tables || {};
+    const re = /(--[^\n]*)|('(?:[^']|'')*'?)|(\b\d+(?:\.\d+)?\b)|([A-Za-z_][A-Za-z0-9_]*)|(\s+)|([\s\S])/g;
+    let out = '', m;
+    while ((m = re.exec(sql))) {
+      if (m[1]) out += `<span class="com">${esc(m[1])}</span>`;
+      else if (m[2]) out += `<span class="str">${esc(m[2])}</span>`;
+      else if (m[3]) out += `<span class="num">${m[3]}</span>`;
+      else if (m[4]) {
+        const w = m[4], up = w.toUpperCase(), lo = w.toLowerCase();
+        if (KNOWN.has(lo)) out += `<span class="tn c-${lo}">${w}</span>`;
+        else if (extra[lo]) out += `<span class="tn c-${extra[lo]}">${w}</span>`;
+        else if (FUNCS.has(lo) && sql[re.lastIndex] === '(') out += `<span class="fn">${w}</span>`;
+        else if (lo === 'current_date') out += `<span class="fn">${w}</span>`;
+        else if (KW.has(up) && (w === up || lo === w)) out += `<span class="kw">${w}</span>`;
+        else if (TYPES.has(lo)) out += `<span class="ty">${w}</span>`;
+        else out += w;
+      } else out += esc(m[5] || m[6]);
+    }
+    return out;
+  }
+
+  /* ------------------------------------------------------------ query model */
+  function ref(s) { const i = s.indexOf('.'); return [s.slice(0, i), s.slice(i + 1)]; }
+  function val(row, c) { const [a, col] = ref(c); const r = row[a]; return r ? (r[col] === undefined ? null : r[col]) : null; }
+  function colName(it) {
+    if (it.as) return it.as;
+    if (it.col) return ref(it.col)[1];
+    if (it.count) return 'count';
+    if (it.jsonAgg) return it.coalesce ? 'coalesce' : 'json_agg';
+    return '?';
+  }
+  function litq(v) { return typeof v === 'number' ? String(v) : "'" + String(v).replace(/'/g, "''") + "'"; }
+
+  function itemLines(it) {
+    const as = it.as ? ` AS ${it.as}` : '';
+    if (it.col) return [it.col + as];
+    if (it.count) return [`count(${it.count})${as}`];
+    const obj = `json_build_object(${it.jsonAgg.map(([k, c]) => `'${k}', ${c}`).join(', ')})`;
+    const filt = it.filter ? ` FILTER (WHERE ${it.filter} IS NOT NULL)` : '';
+    if (it.coalesce) {
+      return [`COALESCE(json_agg(${obj}`, `                  ORDER BY ${it.order})${filt},`, `         '[]')${as}`];
+    }
+    return [`json_agg(${obj}`, `         ORDER BY ${it.order})${filt}${as}`];
+  }
+
+  function toSQL(q) {
+    const parts = q.select.map(itemLines);
+    const flat = parts.map((p) => p.join(' '));
+    let sql;
+    if (parts.every((p) => p.length === 1) && ('SELECT ' + flat.join(', ')).length <= 46) sql = 'SELECT ' + flat.join(', ');
+    else {
+      sql = parts.map((p, i) => (i === 0 ? 'SELECT ' : '       ') + p.join('\n       ') + (i < parts.length - 1 ? ',' : '')).join('\n');
+    }
+    const comma = q.joins.filter((j) => j.kind === ',');
+    sql += `\nFROM ${q.from[0]} ${q.from[1]}` + comma.map((j) => `, ${j.t} ${j.a}`).join('');
+    for (const j of q.joins) {
+      if (j.kind === ',') continue;
+      const on = j.on === true ? 'true' : j.on.map(([a, b]) => `${a} = ${b}`).join(' AND ');
+      sql += `\n${j.kind} ${j.t} ${j.a} ON ${on}`;
+    }
+    if (q.where && q.where.length) sql += '\nWHERE ' + q.where.map(([c, v]) => `${c} = ${litq(v)}`).join(' AND ');
+    if (q.groupBy) sql += '\nGROUP BY ' + q.groupBy.join(', ');
+    if (q.orderBy) sql += '\nORDER BY ' + q.orderBy.join(', ');
+    return sql + ';';
+  }
+
+  function cmp(a, b) {
+    if (a === b) return 0;
+    if (a === null) return 1;
+    if (b === null) return -1;
+    return a < b ? -1 : 1;
+  }
+  function sortRows(rows, keys) {
+    return [...rows].sort((x, y) => { for (const k of keys) { const c = cmp(val(x, k), val(y, k)); if (c) return c; } return 0; });
+  }
+  function pkSort(t, rows) {
+    const pk = window.Engine.PK[t];
+    return [...rows].sort((a, b) => { for (const c of pk) { const d = cmp(a[c], b[c]); if (d) return d; } return 0; });
+  }
+  function onOk(j, row) {
+    if (j.kind === ',' || j.on === true) return true;
+    return j.on.every(([x, y]) => { const a = val(row, x), b = val(row, y); return a !== null && b !== null && a === b; });
+  }
+  function whereOk(q, row) { return !q.where || q.where.every(([c, v]) => val(row, c) === v); }
+  const isGrouped = (q) => !!q.groupBy || q.select.some((it) => it.count || it.jsonAgg);
+
+  function joinRows(q, db) {
+    let rows = pkSort(q.from[0], db.rows(q.from[0])).map((r) => ({ [q.from[1]]: r }));
+    for (const j of q.joins) {
+      const right = pkSort(j.t, db.rows(j.t));
+      const out = [];
+      for (const L of rows) {
+        const ms = right.filter((R) => onOk(j, { ...L, [j.a]: R }));
+        if (ms.length) ms.forEach((m) => out.push({ ...L, [j.a]: m }));
+        else if (j.kind === 'LEFT JOIN') out.push({ ...L, [j.a]: null });
+      }
+      rows = out;
+    }
+    return rows.filter((r) => whereOk(q, r));
+  }
+
+  function aggValue(it, g) {
+    if (it.count === '*') return g.length;
+    if (it.count) return g.filter((r) => val(r, it.count) !== null).length;
+    let items = it.filter ? g.filter((r) => val(r, it.filter) !== null) : g;
+    items = sortRows(items, [it.order]);
+    const arr = items.map((r) => Object.fromEntries(it.jsonAgg.map(([k, c]) => [k, val(r, c)])));
+    if (!arr.length) return it.coalesce ? [] : null;
+    return arr;
+  }
+
+  function evaluate(q, db) {
+    const joined = joinRows(q, db);
+    const cols = q.select.map(colName);
+    let rows;
+    if (isGrouped(q)) {
+      const groups = new Map();
+      for (const r of joined) {
+        const k = JSON.stringify((q.groupBy || []).map((c) => val(r, c)));
+        if (!groups.has(k)) groups.set(k, []);
+        groups.get(k).push(r);
+      }
+      let gs = [...groups.values()];
+      if (q.orderBy) gs.sort((x, y) => { for (const k of q.orderBy) { const c = cmp(val(x[0], k), val(y[0], k)); if (c) return c; } return 0; });
+      rows = gs.map((g) => q.select.map((it) => (it.col ? val(g[0], it.col) : aggValue(it, g))));
+    } else {
+      const sorted = q.orderBy ? sortRows(joined, q.orderBy) : joined;
+      rows = sorted.map((r) => q.select.map((it) => val(r, it.col)));
+    }
+    return { cols, rows, joined };
+  }
+
+  /* ------------------------------------------------------------ frames */
+  const LABEL = {
+    customers: (r) => r.first_name,
+    orders: (r) => `Order ${r.id}`,
+    products: (r) => r.name,
+    loyalty_cards: (r) => `Card ${r.id}`,
+    order_items: (r) => `Line ${r.order_id}/${r.product_id}`,
+  };
+  const NOUN = { customers: ['customer', 'customers'], orders: ['order', 'orders'], products: ['product', 'products'],
+    loyalty_cards: ['card', 'cards'], order_items: ['line', 'lines'] };
+  const plural = (n, t) => `${n} ${NOUN[t][n === 1 ? 0 : 1]}`;
+  const rowsWord = (n) => (n === 1 ? '1 row' : `${n} rows`);
+  function keyOf(t, r) { return window.Engine.keyOf(t, r); }
+
+  function frames(q, db) {
+    const t0 = q.from[0], a0 = q.from[1];
+    const tab = { [a0]: t0 };
+    q.joins.forEach((j) => { tab[j.a] = j.t; });
+    const steps = [];
+    const flat = [];
+    for (const r of pkSort(t0, db.rows(t0))) {
+      let combos = [{ [a0]: r }];
+      const hl = { [a0]: new Set([keyOf(t0, r)]) };
+      const links = [];
+      const notes = [];
+      for (const j of q.joins) {
+        const right = pkSort(j.t, db.rows(j.t));
+        const next = [];
+        const onPair = j.on === true || j.kind === ',' ? null : j.on[0];
+        const otherRef = onPair ? (ref(onPair[0])[0] === j.a ? onPair[1] : onPair[0]) : null;
+        const myRef = onPair ? (ref(onPair[0])[0] === j.a ? onPair[0] : onPair[1]) : null;
+        for (const cmb of combos) {
+          const ms = right.filter((R) => onOk(j, { ...cmb, [j.a]: R }));
+          if (ms.length) {
+            for (const m of ms) {
+              next.push({ ...cmb, [j.a]: m });
+              (hl[j.a] = hl[j.a] || new Set()).add(keyOf(j.t, m));
+              const fromAlias = otherRef ? ref(otherRef)[0] : a0;
+              links.push({ from: [fromAlias, keyOf(tab[fromAlias], cmb[fromAlias]), otherRef ? ref(otherRef)[1] : null],
+                           to: [j.a, keyOf(j.t, m), myRef ? ref(myRef)[1] : null] });
+            }
+          } else if (j.kind === 'LEFT JOIN') {
+            next.push({ ...cmb, [j.a]: null });
+            notes.push({ kind: 'null', j, cmb, otherRef });
+          } else notes.push({ kind: 'drop', j, cmb, otherRef });
+        }
+        combos = next;
+      }
+      const kept = combos.filter((c) => whereOk(q, c));
+      flat.push(...kept);
+      steps.push({ alias: a0, key: keyOf(t0, r), row: r, hl: Object.fromEntries(Object.entries(hl).map(([k, v]) => [k, [...v]])),
+        links, notes, made: kept.length, filtered: combos.length - kept.length, upto: flat.length,
+        caption: (q.caption || caption)(q, r, combos, kept, notes, tab) });
+    }
+    const grouped = isGrouped(q);
+    if (grouped) {
+      steps.push({ group: true, caption: q.groupCaption || 'GROUP BY squashes the rows that share a group into one row.' });
+    }
+    return { steps, flat, grouped, tab };
+  }
+
+  function caption(q, r, combos, kept, notes, tab) {
+    const t0 = q.from[0];
+    const who = `<b>${esc(LABEL[t0](r))}</b>`;
+    const j = q.joins[0];
+    if (q.where && combos.length && !kept.length) return `${who}: WHERE ${q.where.map(([c, v]) => `${c} = ${v}`).join(' AND ')} throws these rows away.`;
+    if (!j) return `${who}: ${rowsWord(kept.length)}.`;
+    if (j.kind === ',' || j.on === true) return `${who}: no join condition, so it pairs with every ${NOUN[j.t][0]}. ${rowsWord(kept.length)}.`;
+    const drop = notes.find((n) => n.kind === 'drop');
+    const nul = notes.find((n) => n.kind === 'null');
+    if (q.joins.length === 1) {
+      const [x, y] = j.on[0];
+      const mine = ref(x)[0] === j.a ? x : y, theirs = mine === x ? y : x;
+      const v = val({ [q.from[1]]: r }, theirs);
+      if (v === null && (drop || nul)) {
+        return `${who}: ${theirs} is NULL. NULL never matches anything, so ${nul ? 'LEFT JOIN keeps the row and fills the right side with NULL' : 'JOIN drops the row'}.`;
+      }
+      if (drop) return `${who}: no ${NOUN[j.t][0]} has ${ref(mine)[1]} = ${v}. JOIN drops the row.`;
+      if (nul) return `${who}: no ${NOUN[j.t][0]} has ${ref(mine)[1]} = ${v}. LEFT JOIN keeps the row and fills the ${NOUN[j.t][0]} columns with NULL.`;
+      const n = kept.length;
+      if (tab[ref(mine)[0]] === t0 && ref(mine)[1] === 'id') {
+        const m = combos[0][j.a];
+        return `${who}: ${theirs.split('.')[1]} is ${v}, so it finds <b>${esc(LABEL[j.t](m))}</b>. ${rowsWord(n)}.`;
+      }
+      if (ref(mine)[1] === 'id') {
+        const m = combos[0][j.a];
+        return `${who}: ${ref(theirs)[1]} is ${v}, so it finds <b>${esc(LABEL[j.t](m))}</b>. ${rowsWord(n)}.`;
+      }
+      return `${who}: ${plural(n, j.t)} with ${ref(mine)[1]} = ${v}, so ${rowsWord(n)}.`;
+    }
+    if (drop) return `${who}: nothing to follow, so JOIN drops it.`;
+    const lines = new Set(combos.map((c) => keyOf(q.joins[0].t, c[q.joins[0].a])));
+    return `${who}: ${plural(lines.size, q.joins[0].t)} in ${q.joins[0].t}. Each one follows its key to ${q.joins[1].t}. ${rowsWord(kept.length)}.`;
+  }
+
+  const api = { highlight, toSQL, evaluate, frames, isGrouped, colName, val, ref, esc, LABEL, joinRows };
+  window.Query = api;
+})();
+
+</script>
+<script>
+/* Shared helpers: DOM builder, stage scaling, theme, fullscreen, keys, toasts, JSON view. */
+(function () {
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+  const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+  function h(tag, props, ...kids) {
+    const el = document.createElement(tag);
+    if (props) {
+      for (const [k, v] of Object.entries(props)) {
+        if (v === null || v === undefined || v === false) continue;
+        if (k === 'class') el.className = v;
+        else if (k === 'html') el.innerHTML = v;
+        else if (k === 'text') el.textContent = v;
+        else if (k.startsWith('on') && typeof v === 'function') el.addEventListener(k.slice(2), v);
+        else if (k === 'style' && typeof v === 'object') Object.assign(el.style, v);
+        else if (k === 'data') for (const [dk, dv] of Object.entries(v)) el.dataset[dk] = dv;
+        else el.setAttribute(k, v === true ? '' : v);
+      }
+    }
+    for (const kid of kids.flat(3)) {
+      if (kid === null || kid === undefined || kid === false) continue;
+      el.append(kid.nodeType ? kid : document.createTextNode(String(kid)));
+    }
+    return el;
+  }
+
+  let scale = 1;
+  function fit() {
+    scale = Math.min(window.innerWidth / 1600, window.innerHeight / 900);
+    document.documentElement.style.setProperty('--s', scale);
+    window.dispatchEvent(new Event('stage-resize'));
+  }
+  function rel(el, box) {
+    const a = el.getBoundingClientRect(), b = box.getBoundingClientRect();
+    return { x: (a.left - b.left) / scale, y: (a.top - b.top) / scale, w: a.width / scale, h: a.height / scale };
+  }
+
+  const ICON_SUN = '<circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M4.6 4.6l1.6 1.6M17.8 17.8l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.6 19.4l1.6-1.6M17.8 6.2l1.6-1.6"/>';
+  const ICON_MOON = '<path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5a8.5 8.5 0 1 0 10.7 10.7z"/>';
+  function setTheme(t) {
+    document.documentElement.dataset.theme = t;
+    const ic = $('#themeIcon');
+    if (ic) ic.innerHTML = t === 'dark' ? ICON_SUN : ICON_MOON;
+    try { localStorage.setItem('dbr-theme', t); } catch (e) { /* storage off */ }
+    window.dispatchEvent(new Event('stage-resize'));
+  }
+  function toggleTheme() {
+    setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
+    if (window.Tabs) window.Tabs.send({ type: 'theme', t: document.documentElement.dataset.theme });
+  }
+  function toggleFull() {
+    if (!document.fullscreenElement) document.documentElement.requestFullscreen && document.documentElement.requestFullscreen().catch(() => {});
+    else document.exitFullscreen && document.exitFullscreen();
+  }
+
+  const keyMap = {};
+  function onKey(key, fn) { keyMap[key] = fn; }
+  document.addEventListener('keydown', (e) => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    const tag = (e.target && e.target.tagName) || '';
+    const typing = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (e.target && e.target.isContentEditable);
+    if (typing && e.key !== 'Escape') return;
+    const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+    const fn = keyMap[k];
+    if (fn) { if (fn(e) !== false) e.preventDefault(); }
+  });
+
+  let toastTimer = null;
+  function toast(html, ms = 2600) {
+    const old = $('#toast');
+    if (old) old.remove();
+    const el = h('div', { class: 'toast', id: 'toast', role: 'status', html });
+    $('#stage').append(el);
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.remove(), ms);
+  }
+
+  function sheet(title, body, opts = {}) {
+    closeSheet();
+    const close = h('button', { class: 'icon-btn', 'aria-label': 'Close', onclick: closeSheet, html: '<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>' });
+    const box = h('div', { class: 'sheet ' + (opts.cls || ''), style: { width: (opts.width || 680) + 'px' }, role: 'dialog', 'aria-label': title },
+      h('h2', null, title, close), body);
+    const bg = h('div', { class: 'overlay-bg', id: 'sheetBg', onclick: (e) => { if (e.target === bg) closeSheet(); } }, box);
+    $('#stage').append(bg);
+    close.focus();
+    return box;
+  }
+  function closeSheet() { const s = $('#sheetBg'); if (s) { s.remove(); return true; } return false; }
+
+  /* JSON pretty printer: small objects stay on one line, everything is highlighted */
+  function jsonHTML(v, width = 52) {
+    const lines = [];
+    const fmtScalar = (x) => {
+      if (x === null) return '<span class="kw">null</span>';
+      if (typeof x === 'number') return `<span class="num">${x}</span>`;
+      if (typeof x === 'boolean') return `<span class="kw">${x}</span>`;
+      return `<span class="str">"${esc(x)}"</span>`;
+    };
+    const plain = (x) => JSON.stringify(x).replace(/","/g, '", "').replace(/":/g, '": ').replace(/,"/g, ', "').replace(/^\{/, '{ ').replace(/\}$/, ' }');
+    const inline = (x) => {
+      if (x === null || typeof x !== 'object') return fmtScalar(x);
+      if (Array.isArray(x)) return '[' + x.map(inline).join(', ') + ']';
+      const ks = Object.keys(x);
+      if (!ks.length) return '{}';
+      return '{ ' + ks.map((k) => `<span class="jk">"${esc(k)}"</span>: ${inline(x[k])}`).join(', ') + ' }';
+    };
+    const walk = (x, ind, key, last) => {
+      const pre = ' '.repeat(ind) + (key !== null ? `<span class="jk">"${esc(key)}"</span>: ` : '');
+      const comma = last ? '' : ',';
+      const flatLen = ind + (key !== null ? key.length + 4 : 0) + plain(x === undefined ? null : x).length;
+      if (x === null || typeof x !== 'object' || flatLen <= width || (Array.isArray(x) && !x.length)) {
+        lines.push(pre + inline(x) + comma);
+        return;
+      }
+      const isArr = Array.isArray(x);
+      lines.push(pre + (isArr ? '[' : '{'));
+      const ents = isArr ? x.map((y, i) => [null, y, i]) : Object.entries(x).map(([k, y], i) => [k, y, i]);
+      ents.forEach(([k, y, i]) => walk(y, ind + 2, k, i === ents.length - 1));
+      lines.push(' '.repeat(ind) + (isArr ? ']' : '}') + comma);
+    };
+    walk(v, 0, null, true);
+    return lines;
+  }
+
+  window.UI = {
+    $, $$, h, esc, fit, rel, get scale() { return scale; }, setTheme, toggleTheme, toggleFull, onKey, toast, sheet, closeSheet, jsonHTML,
+    reduced: () => window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+    init() {
+      let t = 'dark';
+      try { t = localStorage.getItem('dbr-theme') || 'dark'; } catch (e) { /* storage off */ }
+      setTheme(t);
+      fit();
+      window.addEventListener('resize', fit);
+      const tb = $('#themeBtn'); if (tb) tb.addEventListener('click', toggleTheme);
+      const fb = $('#fsBtn'); if (fb) fb.addEventListener('click', toggleFull);
+      onKey('t', toggleTheme);
+      onKey('f', toggleFull);
+      onKey('Escape', () => closeSheet());
+    },
+  };
+})();
+
+</script>
+<script>
+/* Table cards, link lines, and the JOIN step player. */
+(function () {
+  const { h, esc, rel } = window.UI;
+  const E = window.Engine;
+  const MONEY = new Set(['unit_price']);
+  const KEY_SVG = '<svg class="ico" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3M15 8l2 2"/></svg>';
+  const LINK_SVG = '<svg class="ico" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>';
+
+  function fmt(v, col) {
+    if (v === null || v === undefined) return 'NULL';
+    if (typeof v === 'number' && MONEY.has(col)) return v.toFixed(2);
+    if (typeof v === 'object') return JSON.stringify(v).replace(/,"/g, ', "').replace(/":/g, '": ').replace(/},{/g, '}, {');
+    return String(v);
+  }
+
+  /* column metadata for a store table, honouring constraints switched off in db */
+  function storeCols(table, names, db) {
+    return names.map((name) => {
+      const pk = E.PK[table].includes(name);
+      const fk = E.FKS.find((f) => f.t === table && f.cols.includes(name));
+      const unique = E.UNIQUES[table].some((u) => u.cols.length === 1 && u.cols[0] === name && (!db || db.isOn(u.name)));
+      return { name, pk, fk: fk ? fk.ref : null, unique };
+    });
+  }
+
+  function card(o) {
+    const head = h('div', { class: 'tcard-head' }, h('span', { class: 'tdot' }), h('span', null, o.title),
+      o.alias ? h('span', { class: 'alias' }, o.alias) : null, o.badge ? h('span', { class: 'badge', html: o.badge }) : null);
+    const thead = h('tr', null, o.cols.map((c) => h('th', {
+      class: [c.pk ? 'pk' : '', c.fk ? 'fk c-' + c.fk : ''].join(' ').trim() || null, 'data-col': c.name,
+    }, h('span', { class: 'th-in', html: (c.pk ? KEY_SVG : '') + (c.fk ? LINK_SVG : '') + esc(c.label || c.name) + (c.unique ? ' <span class="uq">UNIQUE</span>' : '') }))));
+    const body = h('tbody');
+    for (const r of o.rows) body.append(row(o, r));
+    if (!o.rows.length) body.append(h('tr', { class: 'empty-row' }, h('td', { colspan: o.cols.length }, o.empty || 'No rows')));
+    const el = h('div', { class: `tcard t-${o.color || o.table}`, 'data-table': o.alias || o.table }, head,
+      h('table', null, h('thead', null, thead), body));
+    if (o.width) el.style.width = o.width + 'px';
+    return el;
+  }
+  function row(o, r) {
+    return h('tr', { 'data-key': r.key, class: r.cls || null }, o.cols.map((c) => {
+      const v = r.vals[c.name];
+      const cls = [c.pk ? 'pkc' : '', c.fk ? 'fkc c-' + c.fk : '', v === null || v === undefined ? 'null' : '',
+        MONEY.has(c.name) ? 'money' : '', (r.bad || []).includes(c.name) ? 'bad' : '', (r.chg || []).includes(c.name) ? 'chg' : ''].join(' ').trim();
+      return h('td', { class: cls || null, 'data-col': c.name }, fmt(v, c.name));
+    }));
+  }
+
+  /* links: [{ from: el, to: el, color, cls }] drawn as curves from one row edge to another */
+  function drawLinks(svg, box, links) {
+    svg.innerHTML = '';
+    const NS = 'http://www.w3.org/2000/svg';
+    for (const L of links) {
+      if (!L.from || !L.to) continue;
+      const a = rel(L.from, box), b = rel(L.to, box);
+      const ay = a.y + a.h / 2, by = b.y + b.h / 2;
+      let x1, x2, d;
+      if (a.x + a.w <= b.x + 1) { x1 = a.x + a.w; x2 = b.x; d = Math.max(28, (x2 - x1) / 2); }
+      else if (b.x + b.w <= a.x + 1) { x1 = a.x; x2 = b.x + b.w; d = -Math.max(28, (x1 - x2) / 2); }
+      else { x1 = a.x + a.w; x2 = b.x + b.w; d = 0; }
+      const p = document.createElementNS(NS, 'path');
+      const dpath = d === 0
+        ? `M${x1},${ay} C${x1 + 70},${ay} ${x2 + 70},${by} ${x2},${by}`
+        : `M${x1},${ay} C${x1 + d},${ay} ${x2 - d},${by} ${x2},${by}`;
+      p.setAttribute('d', dpath);
+      p.setAttribute('class', 'link ' + (L.cls || ''));
+      p.style.setProperty('--lc', L.color || 'var(--c-neutral)');
+      svg.append(p);
+      for (const [x, y, r] of [[x1, ay, 3], [x2, by, 4.5]]) {
+        const c = document.createElementNS(NS, 'circle');
+        c.setAttribute('cx', x); c.setAttribute('cy', y); c.setAttribute('r', r);
+        c.setAttribute('class', 'link-dot ' + (L.cls === 'faint' ? 'faint' : ''));
+        c.style.setProperty('--lc', L.color || 'var(--c-neutral)');
+        svg.append(c);
+      }
+    }
+  }
+
+  /* ------------------------------------------------------------ JOIN player */
+  const Q = () => window.Query;
+  class JoinPlayer {
+    constructor(parts, opts = {}) {
+      this.p = parts; // { stage, cap, res }
+      this.opts = opts;
+      this.svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      this.svg.setAttribute('class', 'links');
+      this.timer = null;
+      window.addEventListener('stage-resize', () => this.redrawLinks());
+    }
+    load(q, db, show, preview) {
+      this.stop();
+      this.q = q; this.db = db; this.show = show; this.preview = preview;
+      this.fr = Q().frames(q, db);
+      this.final = Q().evaluate(q, db);
+      this.i = -1;
+      this.aliases = [q.from[1], ...q.joins.map((j) => j.a)];
+      const stage = this.p.stage;
+      stage.innerHTML = '';
+      this.cards = {};
+      const wrap = h('div', { class: 'jp-cards' });
+      for (const a of this.aliases) {
+        const t = this.fr.tab[a];
+        const cols = storeCols(t, show[a], db);
+        const rows = Q().joinRows({ from: [t, 'x'], joins: [] }, db).map((r) => ({ key: E.keyOf(t, r.x), vals: r.x }));
+        const c = card({ table: t, title: t, alias: a, cols, rows, color: t });
+        this.cards[a] = c;
+        wrap.append(c);
+      }
+      stage.append(wrap, this.svg);
+      this.renderResult(0, false);
+      this.caption(this.opts.ready || 'Press <b>Play</b> to watch Postgres match the rows, or <b>Step</b> to go one row at a time.');
+      if (this.opts.onChange) this.opts.onChange(this);
+    }
+    get done() { return this.i >= this.fr.steps.length - 1; }
+    caption(html) { if (this.p.cap) this.p.cap.innerHTML = html; }
+    resultCols(grouped) {
+      if (grouped || !this.fr.grouped) return this.final.cols;
+      return this.preview.map((r) => (r.includes('.') ? r.split('.')[1] : r));
+    }
+    renderResult(upto, grouped, fresh) {
+      const cols = this.resultCols(grouped);
+      let rows;
+      if (grouped || !this.fr.grouped) rows = grouped ? this.final.rows : this.final.rows.slice(0, upto);
+      else rows = this.fr.flat.slice(0, upto).map((r) => this.preview.map((c) => Q().val(r, c)));
+      const n = rows.length;
+      const tb = h('tbody', null, rows.map((r, i) => h('tr', { class: fresh && i >= fresh ? 'new' : null },
+        r.map((v, j) => h('td', { class: [v === null ? 'null' : '', v !== null && typeof v === 'object' ? 'json' : ''].join(' ').trim() || null }, fmt(v, cols[j]))))));
+      const table = h('table', { class: 'rtable' }, h('thead', null, h('tr', null, cols.map((c) => h('th', null, c)))), tb);
+      this.p.res.innerHTML = '';
+      const label = grouped ? `${n} ${n === 1 ? 'row' : 'rows'} after GROUP BY` : `${n} ${n === 1 ? 'row' : 'rows'} so far`;
+      this.p.res.append(h('div', { class: 'jp-count' }, h('b', null, this.done ? `${n} ${n === 1 ? 'row' : 'rows'}` : label)), table);
+      const last = this.p.res.querySelector('tr.new:last-child');
+      if (last) last.scrollIntoView({ block: 'nearest' });
+    }
+    clear() {
+      for (const c of Object.values(this.cards)) {
+        c.querySelectorAll('tr').forEach((tr) => tr.classList.remove('hl', 'dim', 'done', 'miss'));
+        c.querySelectorAll('td.on').forEach((td) => td.classList.remove('on'));
+      }
+      this.svg.innerHTML = '';
+      this.links = [];
+    }
+    apply(i) {
+      this.clear();
+      const st = this.fr.steps[i];
+      const prevUpto = i > 0 && !this.fr.steps[i - 1].group ? this.fr.steps[i - 1].upto : 0;
+      if (st.group) {
+        Object.values(this.cards).forEach((c) => c.querySelectorAll('tbody tr').forEach((tr) => tr.classList.add('done')));
+        this.caption(st.caption);
+        this.renderResult(0, true, 0);
+        this.p.res.classList.remove('squash'); void this.p.res.offsetWidth; this.p.res.classList.add('squash');
+        return;
+      }
+      const a0 = this.aliases[0];
+      const c0 = this.cards[a0];
+      const steps = this.fr.steps.filter((s) => !s.group);
+      const idx = steps.indexOf(st);
+      c0.querySelectorAll('tbody tr').forEach((tr, k) => { if (k < idx) tr.classList.add('done'); });
+      for (const a of this.aliases.slice(1)) this.cards[a].querySelectorAll('tbody tr').forEach((tr) => tr.classList.add('dim'));
+      for (const [a, keys] of Object.entries(st.hl)) {
+        for (const k of keys) {
+          const tr = this.cards[a].querySelector(`tr[data-key="${k}"]`);
+          if (tr) { tr.classList.remove('dim', 'done'); tr.classList.add('hl'); }
+        }
+      }
+      if (!st.made && st.notes.some((n) => n.kind === 'drop')) {
+        const tr = c0.querySelector(`tr[data-key="${st.key}"]`);
+        if (tr) tr.classList.add('miss');
+      }
+      this.links = st.links.map((L) => {
+        const fromTr = this.cards[L.from[0]].querySelector(`tr[data-key="${L.from[1]}"]`);
+        const toTr = this.cards[L.to[0]].querySelector(`tr[data-key="${L.to[1]}"]`);
+        if (fromTr && L.from[2]) { const td = fromTr.querySelector(`td[data-col="${L.from[2]}"]`); if (td) td.classList.add('on'); }
+        if (toTr && L.to[2]) { const td = toTr.querySelector(`td[data-col="${L.to[2]}"]`); if (td) td.classList.add('on'); }
+        const parentAlias = L.to[2] === 'id' ? L.to[0] : L.from[2] === 'id' ? L.from[0] : L.to[0];
+        return { from: fromTr, to: toTr, color: `var(--c-${this.fr.tab[parentAlias]})`, cls: 'hl' };
+      });
+      this.redrawLinks();
+      this.caption(st.caption);
+      this.renderResult(st.upto, false, prevUpto);
+    }
+    redrawLinks() { if (this.links && this.p.stage.isConnected) drawLinks(this.svg, this.p.stage, this.links); }
+    next() {
+      if (this.done) return false;
+      this.i += 1;
+      this.apply(this.i);
+      if (this.opts.onChange) this.opts.onChange(this);
+      return true;
+    }
+    finish() {
+      this.stop();
+      this.i = this.fr.steps.length - 1;
+      this.clear();
+      Object.values(this.cards).forEach((c) => c.querySelectorAll('tbody tr').forEach((tr) => tr.classList.add('done')));
+      this.renderResult(this.final.rows.length, this.fr.grouped, this.final.rows.length);
+      this.caption(this.opts.finished ? this.opts.finished(this) : 'Done.');
+      if (this.opts.onChange) this.opts.onChange(this);
+    }
+    reset() { this.load(this.q, this.db, this.show, this.preview); }
+    play(ms) {
+      this.stop();
+      if (this.done) this.reset();
+      this.playing = true;
+      const tick = () => {
+        if (!this.next()) { this.stop(); if (this.opts.onEnd) this.opts.onEnd(this); return; }
+        if (this.done) { this.stop(); if (this.opts.onEnd) this.opts.onEnd(this); return; }
+        this.timer = setTimeout(tick, ms || this.opts.speed || 1400);
+      };
+      tick();
+      if (this.opts.onChange) this.opts.onChange(this);
+    }
+    stop() { clearTimeout(this.timer); this.timer = null; const was = this.playing; this.playing = false; if (was && this.opts.onChange) this.opts.onChange(this); }
+  }
+
+  window.Viz = { card, row, storeCols, drawLinks, fmt, JoinPlayer, KEY_SVG, LINK_SVG };
+})();
+
+</script>
+<script>
+/* Content for the five games. Pure data, checked against real PostgreSQL in the tests. */
+(function () {
+  /* ---------------------------------------------------------------- 1. Relationship Rush
+     q1: can one A have many B?  q2: can one B have many A? */
+  const P = (a, ai, b, bi, q1, q2, fk, note) => ({ a, ai, b, bi, q1, q2, fk, note, kind: q1 && q2 ? 'MN' : q1 || q2 ? '1N' : '11' });
+  const RUSH = [
+    P('Customer', '🧑', 'Order', '📦', true, false, 'orders.customer_id'),
+    P('City', '🏙️', 'Country', '🌍', false, true, 'cities.country_id', 'From the city side it reads many-to-one. Same link.'),
+    P('Post', '📝', 'Comment', '💬', true, false, 'comments.post_id'),
+    P('Folder', '📁', 'File', '📄', true, false, 'files.folder_id'),
+    P('Department', '🏢', 'Employee', '👩‍💼', true, false, 'employees.department_id'),
+    P('Hotel', '🏨', 'Room', '🛏️', true, false, 'rooms.hotel_id'),
+    P('Video', '🎬', 'YouTube channel', '📺', false, true, 'videos.channel_id', 'From the video side it reads many-to-one. Same link.'),
+    P('Chat', '💭', 'Message', '✉️', true, false, 'messages.chat_id'),
+    P('Father', '👨', 'Child', '👶', true, false, 'children.father_id', 'The classic: one father, many children, each child has one father.'),
+    P('Invoice line', '🧾', 'Invoice', '📑', false, true, 'invoice_lines.invoice_id', 'From the line side it reads many-to-one. Same link.'),
+    P('Restaurant', '🍽️', 'Menu item', '🍔', true, false, 'menu_items.restaurant_id'),
+    P('Manager', '🧑‍💼', 'Employee', '👥', true, false, 'employees.manager_id', 'Managers are employees too, so the table points at itself.'),
+    P('Person', '🧍', 'Passport', '🛂', false, false, 'passports.person_id + UNIQUE'),
+    P('User', '👤', 'Profile', '🪪', false, false, 'profiles.user_id + UNIQUE'),
+    P('Customer', '🧑', 'Loyalty card', '💳', false, false, 'loyalty_cards.customer_id + UNIQUE', 'Some customers have no card. That is still one-to-one: zero or one.'),
+    P('Payment', '💵', 'Receipt', '🧾', false, false, 'receipts.payment_id + UNIQUE'),
+    P('Employee', '👩‍💻', 'Assigned desk', '🪑', false, false, 'desks.employee_id + UNIQUE'),
+    P('Driver', '🚗', "Driver's license", '🪪', false, false, 'drivers_licenses.driver_id + UNIQUE'),
+    P('User', '👤', 'Settings', '⚙️', false, false, 'user_settings.user_id + UNIQUE'),
+    P('Concert ticket', '🎫', 'Seat', '💺', false, false, 'tickets.seat_id + UNIQUE', 'For one show, one seat sells one ticket.'),
+    P('Student', '🎓', 'Course', '📚', true, true, 'junction table enrollments'),
+    P('Order', '📦', 'Product', '🛍️', true, true, 'junction table order_items'),
+    P('Movie', '🎬', 'Actor', '🎭', true, true, 'junction table movie_cast'),
+    P('Playlist', '🎧', 'Song', '🎵', true, true, 'junction table playlist_songs'),
+    P('Post', '📝', 'Tag', '🏷️', true, true, 'junction table post_tags'),
+    P('User', '👤', 'Role', '🛡️', true, true, 'junction table user_roles'),
+    P('Recipe', '🍲', 'Ingredient', '🥕', true, true, 'junction table recipe_ingredients'),
+    P('Doctor', '🩺', 'Patient', '🤒', true, true, 'junction table appointments'),
+    P('Book', '📖', 'Author', '✍️', true, true, 'junction table book_authors', 'Co-authors are why this is many-to-many.'),
+    P('Developer', '👩‍💻', 'Project', '🗂️', true, true, 'junction table project_members'),
+  ];
+
+  /* ---------------------------------------------------------------- 2. Key Builder */
+  const T = (name, icon, color, cols) => ({ name, icon, color, cols });
+  const KEYS = [
+    { id: 'co', type: '1N', story: 'A customer can place many orders. Each order belongs to exactly one customer.',
+      A: T('customers', '🧑', 'customers', ['first_name', 'email']), B: T('orders', '📦', 'orders', ['status', 'placed_on']),
+      chips: { a: 'customer_id', b: 'order_id' }, q: ['Can one customer have many orders? Yes.', 'Can one order have many customers? No.'] },
+    { id: 'cl', type: '11opt', story: 'A customer can have one loyalty card, or none. A card belongs to exactly one customer.',
+      A: T('customers', '🧑', 'customers', ['first_name', 'email']), B: T('loyalty_cards', '💳', 'loyalty_cards', ['card_number', 'tier']),
+      chips: { a: 'customer_id', b: 'loyalty_card_id' }, q: ['Can one customer have many cards? No.', 'Can one card have many customers? No.'] },
+    { id: 'op', type: 'MN', story: 'An order can have many products. A product can be in many orders.', junction: 'order_items', jcols: ['quantity'],
+      A: T('orders', '📦', 'orders', ['status', 'placed_on']), B: T('products', '🛍️', 'products', ['name', 'unit_price']),
+      chips: { a: 'order_id', b: 'product_id' }, q: ['Can one order have many products? Yes.', 'Can one product be in many orders? Yes.'] },
+    { id: 'cc', type: '1N', story: 'A country has many cities. A city is in one country.',
+      A: T('countries', '🌍', 'x1', ['name']), B: T('cities', '🏙️', 'x2', ['name', 'population']),
+      chips: { a: 'country_id', b: 'city_id' }, q: ['Can one country have many cities? Yes.', 'Can one city be in many countries? No.'] },
+    { id: 'ps', type: 'MN', story: 'A playlist has many songs. The same song can be on many playlists.', junction: 'playlist_songs', jcols: ['position'],
+      A: T('playlists', '🎧', 'x1', ['title']), B: T('songs', '🎵', 'x2', ['title', 'artist']),
+      chips: { a: 'playlist_id', b: 'song_id' }, q: ['Can one playlist have many songs? Yes.', 'Can one song be on many playlists? Yes.'] },
+    { id: 'up', type: '11both', story: 'Every user has exactly one profile page. Every profile belongs to exactly one user.',
+      A: T('users', '👤', 'x1', ['email']), B: T('profiles', '🪪', 'x2', ['bio', 'avatar_url']),
+      chips: { a: 'user_id', b: 'profile_id' }, q: ['Can one user have many profiles? No.', 'Can one profile have many users? No.'] },
+    { id: 'em', type: 'self', story: 'Each employee has one manager. A manager can lead many people. Managers are employees too.',
+      A: T('employees', '👥', 'x3', ['name', 'job_title']), chips: { a: 'manager_id' },
+      q: ['Can one manager lead many employees? Yes.', 'Can one employee have many managers? No.'] },
+  ];
+
+  /* ---------------------------------------------------------------- 3. Will Postgres allow it? */
+  const ins = (table, cols, vals, returning) => ({ op: 'insert', table, cols, vals, returning });
+  const RULES = [
+    { stmt: ins('customers', ['first_name', 'last_name', 'email'], ['Ruby', 'Lane', 'ruby.lane@example.com'], ['id']), show: ['customers'], expect: 'ok',
+      ok: 'No id in the INSERT, so Postgres picks one: 101, the next number on its counter.' },
+    { stmt: ins('orders', ['customer_id'], [101], ['id']), show: ['customers', 'orders'], expect: 'ok',
+      ok: 'Customer 101 exists now (Ruby, one round ago), so the foreign key is happy. Ruby has her first order.' },
+    { stmt: ins('orders', ['customer_id'], [999], ['id']), show: ['customers', 'orders'], expect: 'fk', rule: 'Foreign key',
+      err: 'There is no customer 999. An order must point at a real customer, so the foreign key blocks it.' },
+    { stmt: ins('loyalty_cards', ['customer_id', 'card_number'], [1, '7700 0101 0001'], ['id']), show: ['customers', 'loyalty_cards'], expect: 'unique', rule: 'UNIQUE',
+      err: 'Emma already has a card. UNIQUE on customer_id is what makes customer and card one-to-one.' },
+    { stmt: ins('customers', ['first_name', 'last_name', 'email'], ['Emma', 'Carter', 'emma.c@example.org'], ['id']), show: ['customers'], expect: 'ok',
+      ok: 'A second Emma Carter is fine. Names can repeat. She gets her own id, and that id is what other tables point at.' },
+    { stmt: ins('customers', ['first_name', 'last_name', 'email'], ['Leo', 'Hart', 'john.smith@example.net'], ['id']), show: ['customers'], expect: 'unique', rule: 'UNIQUE',
+      err: 'That is John\'s email. email is UNIQUE, so no two customers can share one, even though it is not the primary key.' },
+    { stmt: ins('order_items', ['order_id', 'product_id', 'quantity', 'unit_price'], [1026, 2, 1, 29.99]), show: ['order_items', 'products'], expect: 'pk', rule: 'Primary key',
+      err: 'Order 1026 already has the Wireless Mouse. The pair (order_id, product_id) is the primary key, so it can\'t appear twice. To buy two, change the quantity.' },
+    { stmt: ins('orders', ['customer_id'], [null], ['id']), show: ['customers', 'orders'], expect: 'notnull', rule: 'NOT NULL',
+      err: 'customer_id is NOT NULL. Every order needs exactly one customer: that is the "one" in many-to-one.' },
+    { stmt: { op: 'delete', table: 'customers', where: { id: 1 } }, show: ['customers', 'orders'], expect: 'fk-delete', rule: 'Foreign key',
+      err: 'Emma still has 3 orders pointing at her. The foreign key won\'t leave them pointing at nobody, so the delete is blocked.' },
+    { stmt: { op: 'delete', table: 'customers', where: { id: 5 } }, show: ['customers', 'loyalty_cards'], expect: 'ok',
+      ok: 'Mia has no orders, so nothing blocks it. Her loyalty card went with her, because loyalty_cards.customer_id has ON DELETE CASCADE.' },
+  ];
+  const RULE_CHOICES = ['Primary key', 'Foreign key', 'UNIQUE', 'NOT NULL'];
+
+  /* ---------------------------------------------------------------- 4. Count the Rows */
+  const J = (kind, t, a, on) => ({ kind, t, a, on });
+  const COUNT = [
+    { q: { from: ['orders', 'o'], joins: [J('JOIN', 'customers', 'c', [['c.id', 'o.customer_id']])], select: [{ col: 'o.id' }, { col: 'c.first_name' }], orderBy: ['o.id'] },
+      show: { o: ['id', 'customer_id'], c: ['id', 'first_name'] }, choices: [5, 6, 7, 30],
+      why: 'Every order has exactly one customer, so you get one row per order: 6. Many-to-one never adds rows.' },
+    { q: { from: ['customers', 'c'], joins: [J('JOIN', 'orders', 'o', [['o.customer_id', 'c.id']])], select: [{ col: 'c.first_name' }, { col: 'o.id' }], orderBy: ['c.id', 'o.id'] },
+      show: { c: ['id', 'first_name'], o: ['id', 'customer_id'] }, choices: [4, 5, 6, 7],
+      why: 'Same 6. Emma appears three times (one row per order) and Mia vanishes, because JOIN only keeps matches.' },
+    { q: { from: ['customers', 'c'], joins: [J('LEFT JOIN', 'orders', 'o', [['o.customer_id', 'c.id']])], select: [{ col: 'c.first_name' }, { col: 'o.id' }], orderBy: ['c.id', 'o.id'] },
+      show: { c: ['id', 'first_name'], o: ['id', 'customer_id'] }, choices: [5, 6, 7, 8],
+      why: 'LEFT JOIN keeps Mia with NULLs, so 6 + 1 = 7.' },
+    { q: { from: ['customers', 'c'], joins: [J('LEFT JOIN', 'loyalty_cards', 'lc', [['lc.customer_id', 'c.id']])], select: [{ col: 'c.first_name' }, { col: 'lc.tier' }], orderBy: ['c.id'] },
+      show: { c: ['id', 'first_name'], lc: ['id', 'customer_id', 'tier'] }, choices: [4, 5, 6, 9],
+      why: 'One-to-one never duplicates anyone. 5 customers, 5 rows. James gets NULL.' },
+    { q: { from: ['orders', 'o'], joins: [J('JOIN', 'order_items', 'oi', [['oi.order_id', 'o.id']]), J('JOIN', 'products', 'p', [['p.id', 'oi.product_id']])],
+      select: [{ col: 'o.id' }, { col: 'p.name' }], orderBy: ['o.id', 'p.id'] },
+      show: { o: ['id'], oi: ['order_id', 'product_id'], p: ['id', 'name'] }, choices: [6, 8, 10, 12],
+      why: 'One row per line in order_items: 10. The junction table decides the count.' },
+    { q: { from: ['products', 'p'], joins: [J('JOIN', 'order_items', 'oi', [['oi.product_id', 'p.id']]), J('JOIN', 'orders', 'o', [['o.id', 'oi.order_id']])],
+      select: [{ col: 'p.name' }, { col: 'o.id' }], where: [['p.id', 2]], orderBy: ['p.id', 'o.id'] },
+      show: { p: ['id', 'name'], oi: ['order_id', 'product_id'], o: ['id', 'customer_id'] }, choices: [1, 2, 3, 6],
+      why: 'The Wireless Mouse is in three orders: 1002, 1007 and 1026. Many-to-many, read from the product side.' },
+    { q: { from: ['customers', 'c'], joins: [J('JOIN', 'customers', 'r', [['r.id', 'c.referred_by']])], select: [{ col: 'c.first_name', as: 'customer' }, { col: 'r.first_name', as: 'invited_by' }], orderBy: ['c.id'] },
+      show: { c: ['id', 'first_name', 'referred_by'], r: ['id', 'first_name'] }, choices: [2, 3, 5, 25],
+      why: 'Only Olivia, James and Mia were invited. Emma and John have NULL in referred_by, and NULL never matches. 3 rows.' },
+    { q: { from: ['customers', 'c'], joins: [J('LEFT JOIN', 'orders', 'o', [['o.customer_id', 'c.id']])], select: [{ col: 'c.first_name' }, { count: '*', as: 'orders' }], groupBy: ['c.id'], orderBy: ['c.id'],
+      groupCaption: 'GROUP BY squashes each customer into one row. count(*) counts rows, and Mia has one row: the NULL one.' },
+      preview: ['c.first_name', 'o.id'], show: { c: ['id', 'first_name'], o: ['id', 'customer_id'] },
+      ask: 'What number does Mia get?', value: { row: 'Mia', col: 'orders' }, choices: ['0', '1', 'NULL', 'An error'],
+      why: 'Mia gets 1, not 0. LEFT JOIN made one row for her (with NULLs) and count(*) counts that row. count(o.id) would give 0.' },
+    { q: { from: ['customers', 'c'], joins: [J('JOIN', 'orders', 'o', [['o.id', 'c.id']])], select: [{ col: 'c.first_name' }, { col: 'o.id' }], orderBy: ['c.id'] },
+      show: { c: ['id', 'first_name'], o: ['id', 'customer_id'] }, choices: [0, 5, 6, 30], bug: true,
+      why: 'Zero. o.id = c.id compares an order id with a customer id. Order ids start at 1001, so nothing ever matches. Match the foreign key: o.customer_id = c.id.' },
+    { q: { from: ['customers', 'c'], joins: [J(',', 'orders', 'o', true)], select: [{ col: 'c.first_name' }, { col: 'o.id' }], orderBy: ['c.id', 'o.id'] },
+      show: { c: ['id', 'first_name'], o: ['id', 'customer_id'] }, choices: [5, 6, 11, 30], bug: true,
+      why: 'No join condition, so every customer pairs with every order: 5 x 6 = 30. Forgetting the ON is how a report suddenly shows 30 times too much.' },
+  ];
+
+  /* ---------------------------------------------------------------- 5. Query Builder */
+  const BUILD = [
+    { type: 'order', goal: 'List every order with the first name of the customer who placed it.',
+      lines: ['SELECT o.id, c.first_name', 'FROM orders o', 'JOIN customers c', 'ON c.id = o.customer_id', 'ORDER BY o.id;'],
+      bad: [['ON c.id = o.id', 'o.id is an order id and c.id is a customer id. They never match. Join the foreign key to the primary key.'],
+        ['GROUP BY c.id', 'Nothing is being counted here, so there is nothing to group.']],
+      q: { from: ['orders', 'o'], joins: [J('JOIN', 'customers', 'c', [['c.id', 'o.customer_id']])], select: [{ col: 'o.id' }, { col: 'c.first_name' }], orderBy: ['o.id'] } },
+    { type: 'order', goal: 'Every customer with their order ids. Customers with no orders must still show up.',
+      lines: ['SELECT c.first_name, o.id AS order_id', 'FROM customers c', 'LEFT JOIN orders o', 'ON o.customer_id = c.id', 'ORDER BY c.id, o.id;'],
+      bad: [['JOIN orders o', 'A plain JOIN drops customers with no orders. Mia would disappear. Use LEFT JOIN.'],
+        ['ON o.id = c.id', 'That compares an order id with a customer id. Use the foreign key: o.customer_id = c.id.']],
+      q: { from: ['customers', 'c'], joins: [J('LEFT JOIN', 'orders', 'o', [['o.customer_id', 'c.id']])], select: [{ col: 'c.first_name' }, { col: 'o.id', as: 'order_id' }], orderBy: ['c.id', 'o.id'] } },
+    { type: 'order', goal: 'Each customer with their loyalty card tier. Show customers without a card too.',
+      lines: ['SELECT c.first_name, lc.tier', 'FROM customers c', 'LEFT JOIN loyalty_cards lc', 'ON lc.customer_id = c.id', 'ORDER BY c.id;'],
+      bad: [['ON lc.id = c.id', 'Sneaky: this one runs without an error, but it matches card 3 with customer 3. Card 3 is Mia\'s, so Olivia would get Mia\'s tier. Always join on the foreign key.']],
+      q: { from: ['customers', 'c'], joins: [J('LEFT JOIN', 'loyalty_cards', 'lc', [['lc.customer_id', 'c.id']])], select: [{ col: 'c.first_name' }, { col: 'lc.tier' }], orderBy: ['c.id'] } },
+    { type: 'order', goal: 'Show the names of the products in order 1001.',
+      lines: ['SELECT o.id, p.name', 'FROM orders o', 'JOIN order_items oi ON oi.order_id = o.id', 'JOIN products p ON p.id = oi.product_id', 'WHERE o.id = 1001', 'ORDER BY p.id;'],
+      bad: [['JOIN products p ON p.id = o.id', 'Orders and products are not linked directly. Go through the junction table: p.id = oi.product_id.'],
+        ['WHERE p.id = 1001', 'There is no product 1001. The filter is on the order: o.id = 1001.']],
+      q: { from: ['orders', 'o'], joins: [J('JOIN', 'order_items', 'oi', [['oi.order_id', 'o.id']]), J('JOIN', 'products', 'p', [['p.id', 'oi.product_id']])],
+        select: [{ col: 'o.id' }, { col: 'p.name' }], where: [['o.id', 1001]], orderBy: ['p.id'] } },
+    { type: 'order', goal: 'How many orders each customer has. Mia must show 0.',
+      lines: ['SELECT c.first_name, count(o.id) AS orders', 'FROM customers c', 'LEFT JOIN orders o ON o.customer_id = c.id', 'GROUP BY c.id', 'ORDER BY c.id;'],
+      bad: [['SELECT c.first_name, count(*) AS orders', 'count(*) counts rows, and Mia has one row of NULLs, so she would get 1. count(o.id) skips NULLs.'],
+        ['JOIN orders o ON o.customer_id = c.id', 'A plain JOIN drops Mia, so she would not show 0. She would not show at all.']],
+      q: { from: ['customers', 'c'], joins: [J('LEFT JOIN', 'orders', 'o', [['o.customer_id', 'c.id']])], select: [{ col: 'c.first_name' }, { count: 'o.id', as: 'orders' }], groupBy: ['c.id'], orderBy: ['c.id'] } },
+    { type: 'pick', goal: 'Create the junction table between orders and products. Pick the lines it needs.',
+      head: 'CREATE TABLE order_items (', foot: ');',
+      good: ['order_id   bigint  NOT NULL REFERENCES orders (id)', 'product_id bigint  NOT NULL REFERENCES products (id)', 'quantity   integer NOT NULL CHECK (quantity > 0)', 'PRIMARY KEY (order_id, product_id)'],
+      bad: [['product_ids text', 'A text list of ids can\'t have a foreign key and breaks searching. One row per pair is the whole point of a junction table.'],
+        ['order_id   bigint  PRIMARY KEY', 'If order_id alone is the primary key, each order could hold only one product.'],
+        ['customer_id bigint REFERENCES customers (id)', 'The customer already lives on orders. Storing it here again can get out of sync.']],
+      missing: { 'PRIMARY KEY (order_id, product_id)': 'Something is missing: what stops the same product being added twice to one order?',
+        'quantity   integer NOT NULL CHECK (quantity > 0)': 'Something is missing: how many of each product did they buy?' } },
+    { type: 'pick', goal: 'Create loyalty_cards so each customer can have at most one card.',
+      head: 'CREATE TABLE loyalty_cards (', foot: ');',
+      good: ['id          bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY', 'customer_id bigint NOT NULL UNIQUE REFERENCES customers (id)', 'card_number text   NOT NULL UNIQUE'],
+      bad: [['customer_id bigint NOT NULL REFERENCES customers (id)', 'Without UNIQUE, a customer could get two cards. That would be one-to-many.'],
+        ['tier        text   UNIQUE', 'UNIQUE on tier would allow only one gold card in the whole store.']],
+      missing: { 'customer_id bigint NOT NULL UNIQUE REFERENCES customers (id)': 'Something is missing: which customer owns the card?' } },
+  ];
+
+  /* PostgreSQL for a Key Builder answer. place: { A: [chips], B: [chips], M: [chips], pkPair } with chips { key: 'a'|'b', unique } */
+  function keysSQL(L, place) {
+    const colType = (c) => ({ email: 'text NOT NULL UNIQUE', population: 'integer', placed_on: 'date NOT NULL DEFAULT current_date',
+      unit_price: 'numeric(10,2) NOT NULL', status: "text NOT NULL DEFAULT 'processing'", card_number: 'text NOT NULL UNIQUE',
+      tier: "text NOT NULL DEFAULT 'bronze'", avatar_url: 'text', bio: 'text', artist: 'text', job_title: 'text' }[c] || 'text NOT NULL');
+    const ref = (k) => (k === 'a' ? L.A.name : L.B.name);
+    const table = (name, cols) => {
+      const w = Math.max(...cols.filter((c) => c[1] !== null).map((c) => c[0].length));
+      return `CREATE TABLE ${name} (\n${cols.map(([n, d]) => (d === null ? `  ${n}` : `  ${n.padEnd(w)} ${d}`)).join(',\n')}\n);`;
+    };
+    const base = (T) => [['id', 'bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY'], ...T.cols.map((c) => [c, colType(c)])];
+    const fkCols = (chips, selfNull) => chips.map((c) => [L.chips[c.key], `bigint${selfNull ? '' : ' NOT NULL'}${c.unique ? ' UNIQUE' : ''} REFERENCES ${L.type === 'self' ? L.A.name : ref(c.key)} (id)`]);
+    const out = [];
+    if (L.type === 'self') {
+      out.push(table(L.A.name, [...base(L.A), ...fkCols(place.A || [], true)]));
+      return out.join('\n\n');
+    }
+    const aT = table(L.A.name, [...base(L.A), ...fkCols(place.A || [])]);
+    const bT = table(L.B.name, [...base(L.B), ...fkCols(place.B || [])]);
+    const aFirst = !(place.A || []).length;
+    out.push(aFirst ? aT : bT, aFirst ? bT : aT);
+    if ((place.M || []).length) {
+      const cols = fkCols(place.M);
+      (L.jcols || []).forEach((c) => cols.push([c, c === 'quantity' ? 'integer NOT NULL DEFAULT 1' : 'integer']));
+      if (place.pkPair && place.M.length === 2) cols.push([`PRIMARY KEY (${place.M.map((c) => L.chips[c.key]).join(', ')})`, null]);
+      out.push(table(L.junction || 'links', cols));
+    }
+    return out.join('\n\n');
+  }
+
+  window.GameContent = { RUSH, KEYS, RULES, RULE_CHOICES, COUNT, BUILD, keysSQL };
+})();
+
+</script>
+<script>
+/* Five games on the store data. */
+(function () {
+  const { $, $$, h, esc, rel, sheet, closeSheet, onKey } = window.UI;
+  const E = window.Engine, Q = window.Query, V = window.Viz, GC = window.GameContent;
+  const STORE = window.STORE;
+  const G = { mode: 'solo', teams: [{ name: 'Primary Keys', score: 0 }, { name: 'Foreign Keys', score: 0 }], solo: 0, results: {}, keys: {}, timers: [] };
+  const fmtN = (n) => n.toLocaleString('en-US');
+  const teamsOn = () => G.mode === 'teams';
+  const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  const later = (fn, ms) => { const t = setTimeout(fn, ms); G.timers.push(t); return t; };
+  const voters = () => (teamsOn() ? [0, 1] : [null]);
+  const SING = { customers: 'customer', orders: 'order', loyalty_cards: 'loyalty card', products: 'product', countries: 'country', cities: 'city',
+    playlists: 'playlist', songs: 'song', users: 'user', profiles: 'profile', employees: 'employee' };
+  const PLURAL = { Child: 'children', Person: 'people', Settings: 'settings', 'YouTube channel': 'YouTube channels' };
+  const lower = (w) => (w === 'YouTube channel' ? w : w.toLowerCase());
+  const plural = (w) => PLURAL[w] || (/[^aeiou]y$/i.test(w) ? lower(w).slice(0, -1) + 'ies' : lower(w) + 's');
+
+  const GAMES = [
+    { id: 'rush', icon: '⚡', name: 'Relationship Rush', skill: 'Sort pairs of things into one-to-one, one-to-many and many-to-many before the clock runs out.', meta: ['30 cards', '60 s per run'], color: 'var(--brand)', run: () => rush() },
+    { id: 'keys', icon: '🔑', name: 'Key Builder', skill: 'Drag the foreign key into the right table, then see your design as PostgreSQL.', meta: ['7 levels', 'about 5 min'], color: 'var(--c-loyalty_cards)', run: () => keys() },
+    { id: 'allow', icon: '🛡️', name: 'Will Postgres Allow It?', skill: 'Read a statement and predict: does it work, or which rule stops it?', meta: ['10 rounds', 'about 6 min'], color: 'var(--c-customers)', run: () => allow() },
+    { id: 'count', icon: '🔢', name: 'Count the Rows', skill: 'Guess how many rows a JOIN returns, then watch Postgres match them.', meta: ['10 rounds', 'about 6 min'], color: 'var(--c-orders)', run: () => count() },
+    { id: 'build', icon: '🧩', name: 'Query Builder', skill: 'Put SQL pieces in order, and pick the right lines for CREATE TABLE.', meta: ['7 puzzles', 'about 6 min'], color: 'var(--c-order_items)', run: () => build() },
+  ];
+
+  /* ------------------------------------------------------------ shell */
+  function screen() {
+    G.timers.forEach(clearTimeout); G.timers = [];
+    if (G.raf) cancelAnimationFrame(G.raf);
+    G.raf = null; G.keys = {};
+    G.confettiOn = false;
+    const cv = $('#confetti'); if (cv) cv.getContext('2d').clearRect(0, 0, cv.width, cv.height);
+    closeSheet();
+    const r = $('#gmain'); r.innerHTML = '';
+    const s = h('div', { class: 'screen' }); r.append(s);
+    return s;
+  }
+  function scoreboard(turn) {
+    if (!teamsOn()) return h('div', { class: 'board' }, h('div', { class: 'teampill', id: 'soloPill' }, 'Score', h('b', { id: 'soloScore' }, fmtN(G.solo))));
+    return h('div', { class: 'board' }, G.teams.map((t, i) => h('div', { class: `teampill t${i}${turn === i ? ' turn' : ''}`, id: 'team' + i },
+      h('i', { class: 'dot' }), t.name, h('b', null, fmtN(t.score)))));
+  }
+  function award(team, pts) {
+    if (!pts) return;
+    let el;
+    if (teamsOn() && team !== null && team !== undefined) { G.teams[team].score += pts; el = $('#team' + team); if (el) el.querySelector('b').textContent = fmtN(G.teams[team].score); }
+    else { G.solo += pts; el = $('#soloPill'); if (el) $('#soloScore').textContent = fmtN(G.solo); }
+    if (el) {
+      const r = rel(el, $('#stage'));
+      const p = h('div', { class: 'plus', style: { left: (r.x + r.w / 2 - 24) + 'px', top: (r.y + r.h - 4) + 'px' } }, '+' + pts);
+      $('#stage').append(p);
+      setTimeout(() => p.remove(), 1200);
+    }
+  }
+  function header(game, roundText, turn) {
+    return h('div', { class: 'ghead' }, h('button', { class: 'btn small ghost', onclick: home }, '‹ All games'),
+      h('div', { class: 'gname' }, h('span', null, game.icon), game.name), roundText ? h('span', { class: 'round' }, roundText) : null,
+      h('span', { class: 'sp' }), scoreboard(turn));
+  }
+  const snapshot = () => ({ solo: G.solo, t: G.teams.map((t) => t.score) });
+  function intro(game, steps, onStart) {
+    const s = screen();
+    s.append(header(game, null), h('div', { class: 'gbody center' }, h('div', { class: 'card-xl popin' },
+      h('h2', null, h('span', null, game.icon), game.name), h('ol', null, steps.map((t) => h('li', { html: t }))),
+      teamsOn() ? h('div', { class: 'muted', style: { fontSize: '17px' } }, '👥 Team mode: ' + game.teamNote) : null,
+      h('div', { class: 'row' }, h('button', { class: 'btn big primary', onclick: onStart }, 'Start'), h('span', { class: 'muted' }, 'or press Enter')))));
+    G.keys.Enter = onStart;
+  }
+  function interstitial(game, title, sub, go) {
+    const s = screen();
+    s.append(header(game, null), h('div', { class: 'gbody center' }, h('div', { class: 'card-xl popin', style: { alignItems: 'center', textAlign: 'center', width: '700px' } },
+      h('h2', null, title), h('div', { style: { fontSize: '20px', color: 'var(--text-2)' } }, sub), h('button', { class: 'btn big primary', onclick: go }, 'Go'))));
+    G.keys.Enter = go;
+  }
+  function finish(game, start, details, again) {
+    const s = screen();
+    const idx = GAMES.indexOf(game);
+    let head;
+    if (teamsOn()) {
+      const d = G.teams.map((t, i) => t.score - start.t[i]);
+      const win = d[0] === d[1] ? 'A draw!' : `${G.teams[d[0] > d[1] ? 0 : 1].name} win this one!`;
+      head = [h('h2', null, '🏆 ' + win), h('div', { style: { display: 'flex', gap: '30px' } }, G.teams.map((t, i) =>
+        h('div', null, h('div', { class: 'muted' }, t.name), h('div', { class: 'end-score', style: { color: i ? 'var(--team-b)' : 'var(--team-a)' } }, '+' + fmtN(d[i]))))) ];
+      G.results[game.id] = d.map((x, i) => `${G.teams[i].name} +${fmtN(x)}`).join(', ');
+    } else {
+      const d = G.solo - start.solo;
+      head = [h('h2', null, '🎉 Nice work'), h('div', { class: 'end-score' }, '+' + fmtN(d), h('span', { class: 'muted', style: { fontSize: '22px', marginLeft: '12px' } }, 'points'))];
+      G.results[game.id] = `Last score: ${fmtN(d)}`;
+    }
+    const next = GAMES[idx + 1];
+    s.append(header(game, 'Finished'), h('div', { class: 'gbody center' }, h('div', { class: 'card-xl popin', style: { width: '960px' } }, ...head, ...details,
+      h('div', { class: 'row' }, h('button', { class: 'btn big primary', onclick: again }, 'Play again'),
+        next ? h('button', { class: 'btn big', onclick: next.run }, `Next: ${next.name}`) : null, h('button', { class: 'btn big ghost', onclick: home }, 'All games')))));
+    confetti();
+  }
+  function confetti() {
+    if (UI.reduced()) return;
+    const c = $('#confetti'); const ctx = c.getContext('2d');
+    c.width = 1600; c.height = 900;
+    const colors = ['#ff6b47', '#5b9bff', '#f5cb4c', '#5fd27a', '#b48cff', '#ff9a3c'];
+    const ps = Array.from({ length: 150 }, () => ({ x: 800 + (Math.random() - 0.5) * 360, y: 360, vx: (Math.random() - 0.5) * 20, vy: -Math.random() * 15 - 7,
+      s: 7 + Math.random() * 7, c: colors[Math.floor(Math.random() * colors.length)], r: Math.random() * 6, vr: (Math.random() - 0.5) * 0.3 }));
+    let t = 0;
+    G.confettiOn = true;
+    const tick = () => {
+      if (!G.confettiOn) { ctx.clearRect(0, 0, 1600, 900); return; }
+      ctx.clearRect(0, 0, 1600, 900);
+      ps.forEach((p) => { p.x += p.vx; p.y += p.vy; p.vy += 0.42; p.vx *= 0.99; p.r += p.vr;
+        ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.r); ctx.fillStyle = p.c; ctx.fillRect(-p.s / 2, -p.s / 4, p.s, p.s / 2); ctx.restore(); });
+      if (++t < 160) requestAnimationFrame(tick); else ctx.clearRect(0, 0, 1600, 900);
+    };
+    tick();
+  }
+
+  /* ------------------------------------------------------------ home */
+  function home() {
+    const s = screen();
+    s.classList.add('home');
+    const seg = h('div', { class: 'seg', role: 'group', 'aria-label': 'Players' },
+      h('button', { 'aria-pressed': String(!teamsOn()), onclick: () => { G.mode = 'solo'; home(); } }, '🙋 Solo'),
+      h('button', { 'aria-pressed': String(teamsOn()), onclick: () => { G.mode = 'teams'; home(); } }, '👥 Two teams'));
+    const names = teamsOn() ? h('div', { class: 'names' }, G.teams.map((t, i) => {
+      const inp = h('input', { class: 't' + i, value: t.name, maxlength: 20, 'aria-label': `Team ${i + 1} name` });
+      inp.addEventListener('input', () => { t.name = inp.value.trim() || `Team ${i + 1}`; });
+      return inp;
+    })) : null;
+    s.append(h('div', { class: 'home-top' }, h('div', null, h('h1', null, 'Pick a game'),
+      h('p', { class: 'lead' }, 'Five quick games on the same store data. Each one trains one skill from the session.')), h('div', { class: 'modepick' }, seg, names)));
+    s.append(h('div', { class: 'tiles' }, GAMES.map((g, i) => h('button', { class: 'tile', style: { '--gc': g.color }, onclick: g.run },
+      h('span', { class: 'num' }, String(i + 1)), h('span', { class: 'em' }, g.icon), h('span', { class: 'nm' }, g.name), h('span', { class: 'sk' }, g.skill),
+      h('span', { class: 'art', html: TILE_ART[g.id] }), G.results[g.id] ? h('span', { class: 'played' }, '✓ ' + G.results[g.id]) : null,
+      h('span', { class: 'meta' }, g.meta.map((m) => h('span', null, m))), h('span', { class: 'btn primary playbtn' }, 'Play')))));
+    s.append(h('div', { class: 'home-foot' }, scoreboard(null), h('span', null, 'Scores add up across all five games.'),
+      h('button', { class: 'btn small ghost', onclick: () => { G.solo = 0; G.teams.forEach((t) => { t.score = 0; }); G.results = {}; home(); } }, '⟲ Reset scores')));
+    GAMES.forEach((g, i) => { G.keys[String(i + 1)] = g.run; });
+  }
+
+  /* ------------------------------------------------------------ 1. Relationship Rush */
+  const ART = {
+    '11': '<svg viewBox="0 0 150 56"><line class="l" x1="38" y1="28" x2="112" y2="28"/><circle class="n" cx="28" cy="28" r="11"/><circle class="n" cx="122" cy="28" r="11"/></svg>',
+    '1N': '<svg viewBox="0 0 150 56"><path class="l" d="M38 28 L112 9 M38 28 L112 28 M38 28 L112 47"/><circle class="n" cx="28" cy="28" r="11"/><circle class="n" cx="122" cy="9" r="7"/><circle class="n" cx="122" cy="28" r="7"/><circle class="n" cx="122" cy="47" r="7"/></svg>',
+    MN: '<svg viewBox="0 0 150 56"><path class="l" d="M36 9 L114 28 M36 9 L114 47 M36 28 L114 9 M36 47 L114 28 M36 47 L114 9"/><circle class="n" cx="28" cy="9" r="7"/><circle class="n" cx="28" cy="28" r="7"/><circle class="n" cx="28" cy="47" r="7"/><circle class="n" cx="122" cy="9" r="7"/><circle class="n" cx="122" cy="28" r="7"/><circle class="n" cx="122" cy="47" r="7"/></svg>',
+  };
+  const TILE_ART = {
+    rush: `<span class="ta-rush">${['11', '1N', 'MN'].map((k) => ART[k]).join('')}</span>`,
+    keys: '<span class="ta-keys"><span class="ta-tbl">orders</span><span class="chip c-customers">🔗 customer_id</span></span>',
+    allow: '<span class="ta-allow"><span>✅ works</span><span>💥 error</span></span>',
+    count: '<span class="ta-count">6<small>rows?</small></span>',
+    build: '<span class="ta-build"><code>SELECT …</code><code>FROM …</code><code>JOIN … ON …</code></span>',
+  };
+  const kindName = (c) => (c.kind === '11' ? 'One-to-one' : c.kind === 'MN' ? 'Many-to-many' : c.q1 ? 'One-to-many' : 'Many-to-one');
+  const explainPair = (c) => `<b>${kindName(c)}.</b> Can one ${esc(lower(c.a))} have many ${esc(plural(c.b))}? <b>${c.q1 ? 'Yes' : 'No'}</b>. Can one ${esc(lower(c.b))} have many ${esc(plural(c.a))}? <b>${c.q2 ? 'Yes' : 'No'}</b>. Key: <code class="inl">${esc(c.fk)}</code>.${c.note ? ' ' + esc(c.note) : ''}`;
+
+  const RUSH_CARDS = 10;
+  function rush() {
+    const timed = G.rushTimer !== false;
+    GAMES[0].teamNote = timed ? 'each team gets its own 60-second run with a fresh shuffle. Highest score wins.' : `each team gets its own run of ${RUSH_CARDS} cards. Highest score wins.`;
+    intro(GAMES[0], ['A pair of things appears, like <b>Playlist &amp; Song</b>.',
+      'Ask the two questions: can one have many of the other? And the other way round?',
+      'Click a box, press <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd>, or drag the card into a box.',
+      timed ? 'Right answers in a row multiply your points. A wrong answer costs 3 seconds.' : `Right answers in a row multiply your points. ${RUSH_CARDS} cards per run, no clock.`], startRush);
+    const row = $('#gmain .card-xl .row');
+    const seg = h('div', { class: 'seg', role: 'group', 'aria-label': 'Timer' },
+      h('button', { 'aria-pressed': String(!timed), onclick: () => { G.rushTimer = false; rush(); } }, '🐢 No timer'),
+      h('button', { 'aria-pressed': String(timed), onclick: () => { G.rushTimer = true; rush(); } }, '⏱️ 60 seconds'));
+    if (row) row.parentNode.insertBefore(h('div', { class: 'timerpick' }, h('span', { class: 'muted' }, 'Timer'), seg), row);
+  }
+  function startRush() {
+    const start = snapshot();
+    const runs = teamsOn() ? [0, 1] : [null];
+    const results = [];
+    const next = (i) => {
+      if (i >= runs.length) return rushEnd(results, start);
+      const go = () => rushRun(runs[i], (r) => { results.push(r); next(i + 1); });
+      if (runs[i] !== null) interstitial(GAMES[0], `${G.teams[runs[i]].name}, you're up`, (G.rushTimer !== false ? '60 seconds.' : RUSH_CARDS + ' cards, no clock.') + ' The team shouts, one person clicks.', go);
+      else go();
+    };
+    next(0);
+  }
+  function rushRun(team, done) {
+    const game = GAMES[0];
+    const deck = shuffle(GC.RUSH.slice());
+    const total = window.__RUSH_MS || 60000;
+    const timed = G.rushTimer !== false;
+    const st = { i: 0, score: 0, streak: 0, best: 0, right: 0, wrong: [], left: total, lock: false, over: false };
+    const s = screen();
+    s.append(header(game, team === null ? 'Solo run' : G.teams[team].name, team));
+    const body = h('div', { class: 'gbody' });
+    s.append(body);
+    const bar = h('div', { class: 'timebar' }, h('i'));
+    const tLeft = h('div', { class: 'rush-stat' }, h('span', null, timed ? '60' : String(RUSH_CARDS)), h('small', null, timed ? 'seconds' : 'cards left'));
+    const mult = h('div', { class: 'mult' }, '×1');
+    const pts = h('div', { class: 'rush-stat' }, h('span', null, '0'), h('small', null, 'this run'));
+    const mid = h('div', { class: 'rush-mid' });
+    const why = h('div', { class: 'why' }, 'Two questions: can one have many of the other? And the other way round?');
+    const bins = h('div', { class: 'bins' }, [['11', 'One-to-one', ''], ['1N', 'One-to-many', 'also many-to-one'], ['MN', 'Many-to-many', '']].map(([k, label, sub], i) =>
+      h('button', { class: 'bin', 'data-k': k, onclick: () => answer(k) }, h('span', { class: 'k' }, String(i + 1)), h('span', { html: ART[k] }), label, h('span', { class: 'sub' }, sub || ' '))));
+    body.append(h('div', { class: 'rush' }, h('div', { class: 'rush-top' }, tLeft, bar, mult, pts), mid, why, bins));
+    let card;
+    const multOf = () => (st.streak >= 6 ? 3 : st.streak >= 3 ? 2 : 1);
+    function update() {
+      mult.textContent = '×' + multOf();
+      pts.firstChild.textContent = fmtN(st.score);
+      if (!timed) { tLeft.firstChild.textContent = String(Math.max(0, RUSH_CARDS - st.i)); bar.firstChild.style.transform = `scaleX(${Math.max(0, 1 - st.i / RUSH_CARDS)})`; }
+    }
+    function showCard() {
+      const c = deck[st.i % deck.length];
+      card = h('div', { class: 'pcard popin' }, h('div', { class: 'ent' }, h('span', null, c.ai), h('span', null, c.a)), h('span', { class: 'amp' }, '&'),
+        h('div', { class: 'ent' }, h('span', null, c.bi), h('span', null, c.b)));
+      mid.innerHTML = '';
+      mid.append(card);
+      drag(card);
+    }
+    function nextCard() { if (!timed && st.i >= RUSH_CARDS) end(); else showCard(); }
+    function flash(el, cls) { el.classList.add(cls); later(() => el.classList.remove(cls), 900); }
+    function answer(k) {
+      if (st.lock || st.over) return;
+      const c = deck[st.i % deck.length];
+      const binEl = bins.querySelector(`[data-k="${k}"]`);
+      st.i += 1;
+      if (k === c.kind) {
+        st.streak += 1; st.best = Math.max(st.best, st.streak); st.right += 1;
+        st.score += 100 * multOf();
+        flash(binEl, 'good');
+        card.classList.add('ok');
+        const a = rel(card, $('#stage')), b = rel(binEl, $('#stage'));
+        card.style.transform = `translate(${b.x + b.w / 2 - (a.x + a.w / 2)}px, ${b.y + b.h / 2 - (a.y + a.h / 2)}px) scale(.25)`;
+        card.style.opacity = '0';
+        why.innerHTML = `✓ <b>${kindName(c)}</b>${multOf() > 1 ? ` · streak ${st.streak}` : ''}`;
+        st.lock = true;
+        later(() => { st.lock = false; nextCard(); }, 300);
+      } else {
+        st.streak = 0; st.wrong.push(c); if (timed) st.left -= 3000;
+        flash(binEl, 'wrong'); flash(bins.querySelector(`[data-k="${c.kind}"]`), 'good');
+        card.classList.add('bad', 'shake');
+        why.innerHTML = explainPair(c);
+        st.lock = true;
+        if (timed) later(() => { st.lock = false; nextCard(); }, 2300);
+        else {
+          const go = () => { G.keys.Enter = null; st.lock = false; nextCard(); };
+          why.append(h('button', { class: 'btn small primary', style: { marginLeft: '14px' }, onclick: go }, 'Next card ↵'));
+          G.keys.Enter = go;
+        }
+      }
+      update();
+    }
+    function drag(el) {
+      el.addEventListener('pointerdown', (e) => {
+        if (st.lock) return;
+        el.setPointerCapture(e.pointerId);
+        el.classList.add('drag');
+        const sx = e.clientX, sy = e.clientY;
+        let over = null;
+        const move = (ev) => {
+          el.style.transform = `translate(${(ev.clientX - sx) / UI.scale}px, ${(ev.clientY - sy) / UI.scale}px) rotate(${(ev.clientX - sx) / 60}deg)`;
+          el.style.visibility = 'hidden';
+          const t = document.elementFromPoint(ev.clientX, ev.clientY);
+          el.style.visibility = '';
+          const b = t && t.closest('.bin');
+          if (over && over !== b) over.classList.remove('over');
+          over = b; if (b) b.classList.add('over');
+        };
+        const up = () => {
+          el.removeEventListener('pointermove', move); el.removeEventListener('pointerup', up); el.removeEventListener('pointercancel', up);
+          el.classList.remove('drag');
+          if (over) { over.classList.remove('over'); answer(over.dataset.k); } else el.style.transform = '';
+        };
+        el.addEventListener('pointermove', move); el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
+      });
+    }
+    let last = performance.now();
+    const loop = (now) => {
+      st.left -= now - last; last = now;
+      const f = Math.max(0, st.left / total);
+      bar.firstChild.style.transform = `scaleX(${f})`;
+      bar.classList.toggle('low', st.left < 10000);
+      tLeft.firstChild.textContent = String(Math.max(0, Math.ceil(st.left / 1000)));
+      if (st.left <= 0) { end(); return; }
+      G.raf = requestAnimationFrame(loop);
+    };
+    function end() {
+      st.over = true;
+      card.style.pointerEvents = 'none';
+      award(team, st.score);
+      why.innerHTML = timed ? '<b>Time!</b>' : '<b>Done!</b>';
+      later(() => done({ team, ...st }), 1200);
+    }
+    [['1', '11'], ['2', '1N'], ['3', 'MN'], ['ArrowLeft', '11'], ['ArrowDown', '1N'], ['ArrowRight', 'MN']].forEach(([key, k]) => { G.keys[key] = () => answer(k); });
+    showCard();
+    update();
+    if (timed) G.raf = requestAnimationFrame(loop);
+  }
+  function rushEnd(results, start) {
+    const rows = results.map((r) => h('div', { style: { fontSize: '19px' } }, h('b', null, r.team === null ? 'Your run: ' : `${G.teams[r.team].name}: `),
+      `${r.right} right, ${r.wrong.length} wrong, best streak ${r.best}.`));
+    const seen = new Set();
+    const wrong = results.flatMap((r) => r.wrong).filter((c) => { const k = c.a + c.b; if (seen.has(k)) return false; seen.add(k); return true; }).slice(0, 6);
+    const review = wrong.length ? [h('div', { class: 'muted' }, 'The ones that tripped you up:'), h('div', { class: 'review scroll' },
+      wrong.map((c) => h('div', { class: 'it', html: `<b>${esc(c.a)} &amp; ${esc(c.b)}</b>: ${explainPair(c)}` })))] : [h('div', { class: 'outcome ok' }, 'No mistakes. The two questions are working for you.')];
+    finish(GAMES[0], start, [...rows, ...review], startRush);
+  }
+
+  /* ------------------------------------------------------------ 2. Key Builder */
+  function keys() {
+    GAMES[1].teamNote = 'teams take turns, one level each.';
+    intro(GAMES[1], ['Read the story. It tells you how the two things relate.',
+      'Drag a key from the tray into a table, or click a key and then a table.',
+      'Need UNIQUE? Click it on the key. Need a table in the middle? Drop a key in the middle.',
+      'Press <b>Check</b>. First try is 300 points, and you get the PostgreSQL for your design.'], () => keysLevel(0, { start: snapshot(), log: [] }));
+  }
+  function judge(L, P) {
+    const has = (z, k) => P[z].find((c) => c.key === k);
+    const total = P.A.length + P.B.length + P.M.length;
+    if (!total) return { ok: false, msg: 'Drag a key into a table first.' };
+    const a1 = SING[L.A.name], b1 = L.B ? SING[L.B.name] : '';
+    if (L.type === '1N') {
+      if (P.M.length) return { ok: false, msg: `A table in the middle would let one ${b1} belong to many ${L.A.name}. Each ${b1} has exactly one ${a1}, so one key is enough.` };
+      const k = has('B', 'a');
+      if (k && total === 1) return k.unique ? { ok: false, msg: `Close. UNIQUE would allow only one ${b1} per ${a1}. Click UNIQUE again to remove it.` }
+        : { ok: true, msg: `Right. ${L.B.name}.${L.chips.a} points at ${L.A.name}.id. The key goes on the "many" side.` };
+      if (has('A', 'b')) return { ok: false, msg: `A ${a1} row has room for one ${L.chips.b}, but one ${a1} can have many ${L.B.name}. Put the key on the many side.` };
+      return { ok: false, msg: `Each ${b1} belongs to one ${a1}. Which table should hold ${L.chips.a}?` };
+    }
+    if (L.type === '11opt' || L.type === '11both') {
+      if (P.M.length) return { ok: false, msg: 'A table in the middle makes it many-to-many. One key plus UNIQUE is enough here.' };
+      if (P.A.length && P.B.length) return { ok: false, msg: 'Pick one side. Two keys pointing at each other can get out of sync.' };
+      const kb = has('B', 'a'), ka = has('A', 'b');
+      const k = kb || ka;
+      if (!k || total !== 1) return { ok: false, msg: 'Use one key, in one of the two tables.' };
+      if (!k.unique) return { ok: false, msg: `Without UNIQUE, one ${kb ? a1 : b1} could get two ${kb ? L.B.name.replace('_', ' ') : L.A.name}. That would be one-to-many. Click UNIQUE on the key.` };
+      if (L.type === '11opt' && ka) return { ok: true, partial: true, msg: `That works, but ${L.A.name} without a card keep NULL in ${L.chips.b}. Putting ${L.chips.a} in ${L.B.name} is cleaner: the key goes on the optional side.` };
+      return { ok: true, msg: 'Right. A normal foreign key plus UNIQUE: that is one-to-one.' };
+    }
+    if (L.type === 'MN') {
+      if (P.A.length || P.B.length) return { ok: false, msg: `One column holds one id. A ${a1} has many ${L.B.name}, and the other way round, so neither table can hold the key. Make a table in the middle.` };
+      if (!(has('M', 'a') && has('M', 'b'))) return { ok: false, msg: 'The middle table needs both keys, one for each side.' };
+      if (P.M.some((c) => c.unique)) return { ok: false, msg: 'UNIQUE on one of these keys would block the "many" on that side. Leave both keys plain.' };
+      return { ok: true, bonus: P.pkPair ? 50 : 0, msg: `Right. ${L.junction} holds one row per pair.` + (P.pkPair ? ' The pair is the primary key, so no duplicates. +50.' : ' Tip: make the pair the primary key next time, so the same pair can\'t be added twice.') };
+    }
+    if (P.M.length) return { ok: false, msg: 'A table in the middle would let one employee have many managers. Each employee has one, so one key is enough.' };
+    const k = has('A', 'a');
+    if (k.unique) return { ok: false, msg: 'UNIQUE would mean each manager leads only one person. Remove it.' };
+    return { ok: true, msg: 'Right. employees.manager_id points at employees.id: the table points at itself. The person at the top has NULL.' };
+  }
+  function keysLevel(i, S) {
+    const game = GAMES[1];
+    const L = GC.KEYS[i];
+    const team = teamsOn() ? i % 2 : null;
+    const st = { P: { A: [], B: [], M: [], pkPair: false }, sel: null, attempts: 0, hints: 0, solved: false, verdict: null };
+    const s = screen();
+    s.append(header(game, `Level ${i + 1} of ${GC.KEYS.length}`, team));
+    const body = h('div', { class: 'gbody' });
+    s.append(body);
+    const chipsAll = Object.keys(L.chips).map((k) => ({ key: k, name: L.chips[k], ref: k === 'a' || L.type === 'self' ? L.A : L.B }));
+    const placedKeys = () => [...st.P.A, ...st.P.B, ...st.P.M].map((c) => c.key);
+    function place(zone) {
+      if (!st.sel || st.solved) return;
+      for (const z of ['A', 'B', 'M']) st.P[z] = st.P[z].filter((c) => c.key !== st.sel);
+      st.P[zone].push({ key: st.sel, unique: false });
+      st.sel = null; st.verdict = null;
+      render();
+    }
+    function zone(el, z) {
+      el.addEventListener('click', (e) => { if (e.target.closest('button')) return; place(z); });
+      el.addEventListener('dragover', (e) => { e.preventDefault(); el.classList.add('target'); });
+      el.addEventListener('dragleave', () => el.classList.remove('target'));
+      el.addEventListener('drop', (e) => { e.preventDefault(); st.sel = e.dataTransfer.getData('text/plain') || st.sel; place(z); });
+      if (st.sel) el.classList.add('target');
+      return el;
+    }
+    function placedChip(z, c) {
+      const ch = chipsAll.find((x) => x.key === c.key);
+      return h('div', { class: `placed c-${ch.ref.color}` }, `🔗 ${ch.name}`,
+        h('button', { class: 'uqbtn', 'aria-pressed': String(c.unique), disabled: st.solved, onclick: () => { c.unique = !c.unique; st.verdict = null; render(); } }, 'UNIQUE'),
+        h('button', { class: 'btn small ghost x', 'aria-label': 'Remove', disabled: st.solved, onclick: () => { st.P[z] = st.P[z].filter((x) => x !== c); st.verdict = null; render(); } }, '×'));
+    }
+    function tableCard(T, z) {
+      return h('div', { class: `ktable t-${T.color}` }, h('div', { class: 'kh' }, h('span', null, T.icon), T.name),
+        h('div', { class: 'kc pk' }, '🔑 id'), T.cols.map((c) => h('div', { class: 'kc' }, c)),
+        zone(h('div', { class: 'drop' }, st.P[z].map((c) => placedChip(z, c)), st.P[z].length ? null : h('div', { class: 'hint' }, 'Drop a key here')), z));
+    }
+    function render() {
+      body.innerHTML = '';
+      const midEl = st.P.M.length
+        ? zone(h('div', { class: 'mid filled' }, h('div', { class: 'ktable t-x3', style: { height: '100%', boxShadow: 'none', border: '0' } },
+          h('div', { class: 'kh' }, h('span', null, '🔗'), L.junction || 'links'),
+          h('div', { class: 'drop' }, st.P.M.map((c) => placedChip('M', c)), st.P.M.length < 2 ? h('div', { class: 'hint' }, 'Drop a key here') : null),
+          st.P.M.length === 2 ? h('button', { class: 'uqbtn pkpair', 'aria-pressed': String(st.P.pkPair), disabled: st.solved, onclick: () => { st.P.pkPair = !st.P.pkPair; render(); } }, '🔑 Make the pair the primary key') : null)), 'M')
+        : zone(h('div', { class: 'mid' }, 'Need a table in the middle?', h('br'), 'Drop a key here.'), 'M');
+      const board = h('div', { class: 'kb-board' + (L.type === 'self' ? ' self' : '') }, tableCard(L.A, 'A'), midEl, L.B ? tableCard(L.B, 'B') : null);
+      const tray = h('div', { class: 'tray' }, h('span', { class: 'lbl' }, 'Keys:'),
+        chipsAll.filter((c) => !placedKeys().includes(c.key)).map((c) => {
+          const el = h('div', { class: `chip c-${c.ref.color}${st.sel === c.key ? ' sel' : ''}`, draggable: 'true', role: 'button', tabindex: '0' },
+            `🔗 ${c.name}`, h('span', { class: 'to' }, `points at ${c.ref.name}`));
+          el.addEventListener('click', () => { st.sel = st.sel === c.key ? null : c.key; render(); });
+          el.addEventListener('dragstart', (e) => { st.sel = c.key; e.dataTransfer.setData('text/plain', c.key); });
+          return el;
+        }), placedKeys().length === chipsAll.length ? h('span', { class: 'muted' }, 'All keys placed. Click × to take one back.') : null);
+      const v = st.verdict;
+      const foot = h('div', { class: 'kb-foot' },
+        st.solved ? h('button', { class: 'btn big primary', onclick: nextLevel }, i + 1 < GC.KEYS.length ? 'Next level' : 'See results')
+          : h('button', { class: 'btn big primary', onclick: check }, 'Check'),
+        st.solved ? h('button', { class: 'btn big', onclick: showSQL }, 'See the PostgreSQL') : h('button', { class: 'btn big ghost', onclick: hint }, 'Hint (−50)'),
+        h('div', { class: 'verdictbox' }, v ? h('div', { class: 'outcome ' + (v.ok ? 'ok' : 'err'), html: v.html }) : h('span', { class: 'muted' }, st.hints ? L.q.join(' ') : 'Tip: ask the two questions from the story.')));
+      body.append(h('div', { class: 'kb' }, h('div', { class: 'story' }, '📖 ' + L.story), board, tray, foot));
+    }
+    function check() {
+      const r = judge(L, st.P);
+      if (!r.ok) { st.attempts += 1; st.verdict = { ok: false, html: '✗ ' + esc(r.msg) }; render(); return; }
+      st.solved = true;
+      const base = r.partial ? 150 : [300, 200, 100][Math.min(st.attempts, 2)];
+      const pts = Math.max(50, base - st.hints * 50) + (r.bonus || 0);
+      award(team, pts);
+      S.log.push({ i, pts, team, msg: r.msg });
+      st.verdict = { ok: true, html: `✓ ${esc(r.msg)} <b>+${pts}</b>` };
+      render();
+      showSQL();
+    }
+    function hint() { st.hints += 1; st.verdict = { ok: false, html: '💡 ' + L.q.join(' ') }; render(); }
+    function showSQL() {
+      const sql = GC.keysSQL(L, st.P);
+      sheet('Your design in PostgreSQL', h('div', { class: 'sqlpop' }, h('pre', { class: 'code', html: Q.highlight(sql, Object.fromEntries([L.A, L.B].filter(Boolean).map((T) => [T.name, T.color]))) }),
+        h('div', { class: 'row', style: { display: 'flex', gap: '10px', marginTop: '12px' } }, h('button', { class: 'btn primary', onclick: () => { closeSheet(); nextLevel(); } }, i + 1 < GC.KEYS.length ? 'Next level' : 'See results'),
+          h('button', { class: 'btn', onclick: closeSheet }, 'Stay here'))), { width: 900 });
+    }
+    function nextLevel() { if (i + 1 < GC.KEYS.length) keysLevel(i + 1, S); else keysEnd(S); }
+    G.keys.Enter = () => (st.solved ? nextLevel() : check());
+    render();
+  }
+  function keysEnd(S) {
+    const rows = S.log.map((l) => h('div', { class: 'it ok', html: `<b>Level ${l.i + 1}${l.team !== null ? ` (${esc(G.teams[l.team].name)})` : ''}: +${l.pts}.</b> ${esc(l.msg)}` }));
+    finish(GAMES[1], S.start, [h('div', { class: 'review scroll' }, rows)], () => keysLevel(0, { start: snapshot(), log: [] }));
+  }
+
+  /* ------------------------------------------------------------ shared: draw store tables with marks */
+  const SHOW = (tables) => ({
+    customers: tables.length === 1 ? ['id', 'first_name', 'last_name', 'email'] : ['id', 'first_name'],
+    orders: ['id', 'customer_id', 'status'], loyalty_cards: ['id', 'customer_id', 'card_number'],
+    order_items: ['order_id', 'product_id', 'quantity'], products: ['id', 'name'],
+  });
+  function marksFor(stmt, res) {
+    const m = { new: {}, leaving: {}, via: {}, blocked: {}, ghost: null, badLinks: [] };
+    const add = (o, t, k) => { (o[t] = o[t] || new Set()).add(String(k)); };
+    if (res.ok) {
+      res.changes.inserted.forEach((x) => add(m.new, x.table, x.key));
+      res.changes.deleted.forEach((x) => { add(m.leaving, x.table, x.key); if (x.via) add(m.via, x.table, x.key); });
+      return m;
+    }
+    const e = res.error;
+    if (e.kind === 'fk-delete') { add(m.blocked, e.table, e.parentKey); e.blockers.forEach((k) => { add(m.blocked, e.child, k); m.badLinks.push([e.child, String(k)]); }); return m; }
+    if (stmt.op === 'insert') {
+      const bad = e.kind === 'notnull' ? [e.column] : e.kind === 'check' ? ['quantity'] : e.cols || [];
+      m.ghost = { table: stmt.table, row: e.row, bad, fk: e.kind === 'fk' ? e.ref : null };
+      if (e.clashKey) add(m.blocked, e.table, e.clashKey);
+    }
+    return m;
+  }
+  function drawStore(box, db, tables, marks, leavingOnly) {
+    box.innerHTML = '';
+    marks = marks || {};
+    const show = SHOW(tables);
+    const cards = {};
+    for (const t of tables) {
+      const rows = [...db.rows(t)].sort((a, b) => (t === 'order_items' ? (a.order_id - b.order_id) || (a.product_id - b.product_id) : a.id - b.id)).map((r) => {
+        const key = E.keyOf(t, r);
+        const has = (o) => o && o[t] && o[t].has(key);
+        return { key, vals: r, cls: leavingOnly ? (has(marks.leaving) ? 'leaving' : null) : has(marks.new) ? 'new' : has(marks.blocked) ? 'blocked' : null };
+      });
+      if (!leavingOnly && marks.ghost && marks.ghost.table === t) rows.push({ key: 'ghost', vals: marks.ghost.row, cls: 'ghost', bad: marks.ghost.bad });
+      const c = V.card({ table: t, title: t, cols: V.storeCols(t, show[t], db), rows, color: t, badge: E.COLS[t][0].identity ? `next id <b>${db.seq[t]}</b>` : null });
+      if (leavingOnly && marks.via && marks.via[t]) marks.via[t].forEach((k) => { const td = c.querySelector(`tr[data-key="${k}"] td`); if (td) td.append(h('span', { class: 'cascade-tag', style: { color: 'var(--bad)', font: '700 11px var(--f-body)', marginLeft: '6px' } }, 'CASCADE')); });
+      cards[t] = c;
+      box.append(c);
+    }
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('class', 'links');
+    box.append(svg);
+    requestAnimationFrame(() => {
+      const links = [];
+      for (const fk of E.FKS) {
+        if (fk.t === fk.ref || !cards[fk.t] || !cards[fk.ref] || !show[fk.t].includes(fk.cols[0])) continue;
+        cards[fk.t].querySelectorAll('tbody tr[data-key]').forEach((tr) => {
+          const key = tr.dataset.key;
+          const row = key === 'ghost' ? marks.ghost.row : db.rows(fk.t).find((r) => E.keyOf(fk.t, r) === key);
+          if (!row || row[fk.cols[0]] === null || row[fk.cols[0]] === undefined) return;
+          const ptr = cards[fk.ref].querySelector(`tbody tr[data-key="${row[fk.cols[0]]}"]`);
+          const bad = (marks.badLinks || []).some(([t, k]) => t === fk.t && k === key);
+          if (ptr) links.push({ from: tr, to: ptr, color: `var(--c-${fk.ref})`, cls: bad ? 'bad' : (marks.new && marks.new[fk.t] && marks.new[fk.t].has(key)) ? 'hl' : '' });
+          else if (key === 'ghost' && marks.ghost.fk === fk.ref) links.push({ from: tr, to: cards[fk.ref].querySelector('.tcard-head'), cls: 'bad' });
+        });
+      }
+      V.drawLinks(svg, box, links);
+      const g = box.querySelector('tr.ghost') || box.querySelector('tr.blocked');
+      if (g) g.classList.add('shake');
+    });
+  }
+  function voteRows(options, onVote, picks) {
+    return h('div', { class: 'votes' }, voters().map((v) => h('div', { class: 'vrow' + (v === null ? '' : ' t' + v) },
+      v === null ? null : h('div', { class: 'who' }, h('i'), G.teams[v].name),
+      options.map(([val, label], oi) => h('button', { class: 'vbtn', 'data-v': String(v), 'data-o': String(oi), 'aria-pressed': String(picks[v === null ? 0 : v] === val),
+        onclick: () => onVote(v === null ? 0 : v, val) }, label)))));
+  }
+  function markVotes(box, options, picks, right) {
+    box.querySelectorAll('.vbtn').forEach((b) => {
+      const v = Number(b.dataset.v === 'null' ? 0 : b.dataset.v);
+      const val = options[Number(b.dataset.o)][0];
+      b.disabled = true;
+      if (val === right) b.classList.add('right');
+      else if (picks[v] === val) b.classList.add('wrongpick');
+    });
+  }
+  const resultLine = (res) => (res.ok ? `<div class="tagline">✓ ${res.tag}${res.returning ? ' · ' + res.returning.map(([k, v]) => `${k} = ${v}`).join(', ') : ''}</div>`
+    : `<pre class="pgerr" style="margin-bottom:6px">ERROR:  ${esc(res.error.message)}${res.error.detail ? `\n<span class="d">DETAIL:  ${esc(res.error.detail)}</span>` : ''}</pre>`);
+
+  /* ------------------------------------------------------------ 3. Will Postgres Allow It? */
+  function allow() {
+    GAMES[2].teamNote = 'both teams vote on every round, then you reveal. Each team scores on its own.';
+    intro(GAMES[2], ['Each round shows one SQL statement and the tables it touches.',
+      'Vote: does Postgres run it, or stop it with an error?',
+      'If it errors, a bonus question asks which rule stopped it.',
+      'The rounds build on each other, so watch the tables change. 100 points per right call, 50 for the bonus.'],
+      () => allowRound(0, { db: new E.DB(STORE.slice, STORE.next), start: snapshot(), log: [] }));
+  }
+  function allowRound(i, S) {
+    const game = GAMES[2];
+    const R = GC.RULES[i];
+    const before = S.db.clone();
+    const st = { picks: [undefined, undefined], bonus: [undefined, undefined], phase: 'vote', res: null };
+    const s = screen();
+    s.append(header(game, `Round ${i + 1} of ${GC.RULES.length}`, null));
+    const tables = h('div', { class: 'panel tables' });
+    const left = h('div', { class: 'lcol' });
+    s.append(h('div', { class: 'gbody' }, h('div', { class: 'split' }, left, h('div', { class: 'rcol' }, tables))));
+    const MAIN = [[true, '✅ It works'], [false, '💥 Error']];
+    const RULES = GC.RULE_CHOICES.map((r) => [r, r]);
+    const allIn = (arr) => voters().every((v) => arr[v === null ? 0 : v] !== undefined);
+    function render() {
+      left.innerHTML = '';
+      left.append(h('div', { class: 'bigq' }, 'Will Postgres allow it?'), h('pre', { class: 'code sqlcard', html: Q.highlight(E.sqlOf(R.stmt)) }));
+      const vr = voteRows(MAIN, (v, val) => { if (st.phase !== 'vote') return; st.picks[v] = val; render(); }, st.picks);
+      left.append(vr);
+      if (st.phase !== 'vote') markVotes(vr, MAIN, st.picks, st.res.ok);
+      if (st.res) {
+        left.append(h('div', { class: 'outcome ' + (st.res.ok ? 'ok' : 'err'), html: resultLine(st.res) + '💬 ' + esc(st.res.ok ? R.ok : R.err) }));
+      }
+      if (st.phase === 'bonus' || st.phase === 'bonusDone') {
+        left.append(h('div', { style: { font: '700 19px var(--f-head)' } }, 'Bonus: which rule stopped it?'));
+        const br = voteRows(RULES, (v, val) => { if (st.phase !== 'bonus') return; st.bonus[v] = val; render(); }, st.bonus);
+        left.append(br);
+        if (st.phase === 'bonusDone') markVotes(br, RULES, st.bonus, R.rule);
+      }
+      const last = i + 1 >= GC.RULES.length;
+      let btn;
+      if (st.phase === 'vote') btn = h('button', { class: 'btn big primary', disabled: !allIn(st.picks), onclick: reveal }, 'Reveal');
+      else if (st.phase === 'bonus') btn = h('button', { class: 'btn big primary', disabled: !allIn(st.bonus), onclick: revealBonus }, 'Reveal the rule');
+      else btn = h('button', { class: 'btn big primary', onclick: next }, last ? 'See results' : 'Next round');
+      left.append(h('div', { class: 'actions' }, btn, st.phase === 'vote' ? h('span', { class: 'muted', style: { alignSelf: 'center' } }, teamsOn() ? 'Both teams vote first.' : 'Keys: 1 works, 2 error, Enter reveals.') : null));
+    }
+    function reveal() {
+      st.res = S.db.run(R.stmt);
+      const marks = marksFor(R.stmt, st.res);
+      voters().forEach((v) => { const k = v === null ? 0 : v; if (st.picks[k] === st.res.ok) award(v, 100); });
+      st.phase = st.res.ok ? 'done' : 'bonus';
+      S.log.push({ i, res: st.res, picks: st.picks.slice() });
+      if (st.res.ok && st.res.changes.deleted.length) { drawStore(tables, before, R.show, marks, true); later(() => drawStore(tables, S.db, R.show, marks), 1300); }
+      else drawStore(tables, S.db, R.show, marks);
+      render();
+    }
+    function revealBonus() {
+      voters().forEach((v) => { const k = v === null ? 0 : v; if (st.bonus[k] === R.rule) award(v, 50); });
+      S.log[S.log.length - 1].bonus = st.bonus.slice();
+      st.phase = 'bonusDone';
+      render();
+    }
+    function next() { if (i + 1 < GC.RULES.length) allowRound(i + 1, S); else allowEnd(S); }
+    G.keys['1'] = () => { if (st.phase === 'vote' && !teamsOn()) { st.picks[0] = true; render(); } else if (st.phase === 'bonus' && !teamsOn()) { st.bonus[0] = RULES[0][0]; render(); } };
+    G.keys['2'] = () => { if (st.phase === 'vote' && !teamsOn()) { st.picks[0] = false; render(); } else if (st.phase === 'bonus' && !teamsOn()) { st.bonus[0] = RULES[1][0]; render(); } };
+    G.keys['3'] = () => { if (st.phase === 'bonus' && !teamsOn()) { st.bonus[0] = RULES[2][0]; render(); } };
+    G.keys['4'] = () => { if (st.phase === 'bonus' && !teamsOn()) { st.bonus[0] = RULES[3][0]; render(); } };
+    G.keys.Enter = () => { if (st.phase === 'vote' && allIn(st.picks)) reveal(); else if (st.phase === 'bonus' && allIn(st.bonus)) revealBonus(); else if (st.phase === 'done' || st.phase === 'bonusDone') next(); };
+    drawStore(tables, S.db, R.show, {});
+    render();
+  }
+  function allowEnd(S) {
+    const items = S.log.map((l) => {
+      const R = GC.RULES[l.i];
+      const sql = E.sqlOf(R.stmt).split('\n')[0];
+      return h('div', { class: 'it' + (l.res.ok ? ' ok' : ''), html: `<b>${l.i + 1}. ${l.res.ok ? 'Works' : 'Error (' + esc(R.rule) + ')'}</b>: <code class="inl">${esc(sql.length > 64 ? sql.slice(0, 62) + '…' : sql)}</code>` });
+    });
+    finish(GAMES[2], S.start, [h('div', { class: 'review scroll' }, items)], () => allowRound(0, { db: new E.DB(STORE.slice, STORE.next), start: snapshot(), log: [] }));
+  }
+
+  /* ------------------------------------------------------------ 4. Count the Rows */
+  function count() {
+    GAMES[3].teamNote = 'both teams pick a number every round, then you reveal.';
+    intro(GAMES[3], ['Each round shows a query and the tables it reads.',
+      'Pick how many rows you think come back.',
+      'Press <b>Reveal</b> and watch Postgres match the rows one by one.',
+      'Watch out for duplicates, NULLs, and a couple of classic bugs. 100 points per right answer.'],
+      () => countRound(0, { start: snapshot(), log: [] }));
+  }
+  function countRound(i, S) {
+    const game = GAMES[3];
+    const R = GC.COUNT[i];
+    const db = new E.DB(STORE.slice, STORE.next);
+    const fin = Q.evaluate(R.q, db);
+    const answer = R.value ? String(fin.rows.find((r) => r[0] === R.value.row)[fin.cols.indexOf(R.value.col)]) : String(fin.rows.length);
+    const opts = R.choices.map((c) => [String(c), String(c)]);
+    const st = { picks: [undefined, undefined], phase: 'vote' };
+    const s = screen();
+    s.append(header(game, `Round ${i + 1} of ${GC.COUNT.length}`, null));
+    const stage = h('div', { class: 'panel cstage' }), cap = h('div', { class: 'panel ccap' }), res = h('div', { class: 'panel cres scroll' });
+    const left = h('div', { class: 'lcol' });
+    s.append(h('div', { class: 'gbody' }, h('div', { class: 'split', style: { gridTemplateColumns: '560px 1fr' } }, left, h('div', { class: 'rcol' }, stage, cap, res))));
+    const player = new V.JoinPlayer({ stage, cap, res }, { speed: 560, ready: 'Make your guess first. Then watch Postgres match the rows.',
+      finished: () => 'Done. Every row is matched.', onEnd: () => done() });
+    player.load(R.q, db, R.show, R.preview);
+    const allIn = () => voters().every((v) => st.picks[v === null ? 0 : v] !== undefined);
+    function render() {
+      left.innerHTML = '';
+      left.append(h('div', { class: 'bigq' }, (R.bug ? '🐞 ' : '') + (R.ask || 'How many rows come back?')), h('pre', { class: 'code sqlcard', html: Q.highlight(Q.toSQL(R.q)) }));
+      const vr = voteRows(opts, (v, val) => { if (st.phase !== 'vote') return; st.picks[v] = val; render(); }, st.picks);
+      left.append(vr);
+      if (st.phase === 'done') {
+        markVotes(vr, opts, st.picks, answer);
+        left.append(h('div', { class: 'outcome ok' }, h('div', { class: 'answer-big' }, R.value ? `${R.value.row} gets ${answer}` : `${answer} ${answer === '1' ? 'row' : 'rows'}`),
+          h('div', { style: { marginTop: '6px' } }, R.why)));
+      }
+      const last = i + 1 >= GC.COUNT.length;
+      left.append(h('div', { class: 'actions' },
+        st.phase === 'vote' ? h('button', { class: 'btn big primary', disabled: !allIn(), onclick: reveal }, 'Reveal')
+          : st.phase === 'playing' ? h('button', { class: 'btn big', onclick: () => player.finish() || done() }, 'Skip to the answer')
+            : h('button', { class: 'btn big primary', onclick: next }, last ? 'See results' : 'Next round')));
+    }
+    function reveal() { st.phase = 'playing'; render(); player.play(R.q.joins[0].kind === ',' ? 420 : 640); }
+    function done() {
+      if (st.phase === 'done') return;
+      player.stop();
+      if (!player.done) player.finish();
+      st.phase = 'done';
+      voters().forEach((v) => { if (st.picks[v === null ? 0 : v] === answer) award(v, 100); });
+      S.log.push({ i, answer, picks: st.picks.slice() });
+      render();
+    }
+    function next() { if (i + 1 < GC.COUNT.length) countRound(i + 1, S); else countEnd(S); }
+    if (!teamsOn()) opts.forEach(([val], k) => { G.keys[String(k + 1)] = () => { if (st.phase === 'vote') { st.picks[0] = val; render(); } }; });
+    G.keys.Enter = () => { if (st.phase === 'vote' && allIn()) reveal(); else if (st.phase === 'done') next(); };
+    render();
+  }
+  function countEnd(S) {
+    const items = S.log.map((l) => {
+      const R = GC.COUNT[l.i];
+      const ok = voters().some((v) => l.picks[v === null ? 0 : v] === l.answer);
+      return h('div', { class: 'it' + (ok ? ' ok' : ''), html: `<b>${l.i + 1}. ${R.value ? 'Mia gets ' + l.answer : l.answer + ' rows'}</b>: ${esc(R.why)}` });
+    });
+    finish(GAMES[3], S.start, [h('div', { class: 'review scroll' }, items)], () => countRound(0, { start: snapshot(), log: [] }));
+  }
+
+  /* ------------------------------------------------------------ 5. Query Builder */
+  function build() {
+    GAMES[4].teamNote = 'teams take turns, one puzzle each.';
+    intro(GAMES[4], ['Read the goal. Each puzzle has the right pieces and a couple of traps.',
+      'Click pieces to build the query from top to bottom. Click a placed piece to send it back.',
+      'For CREATE TABLE puzzles, switch on the lines the table needs.',
+      'First try is 300 points. Hints cost 50.'], () => buildPuzzle(0, { start: snapshot(), log: [] }));
+  }
+  function buildPuzzle(i, S) {
+    const game = GAMES[4];
+    const B = GC.BUILD[i];
+    const team = teamsOn() ? i % 2 : null;
+    const good = B.type === 'order' ? B.lines : B.good;
+    const badMap = Object.fromEntries(B.bad);
+    const pieces = shuffle([...good, ...B.bad.map((b) => b[0])]);
+    const st = { placed: [], picked: new Set(), attempts: 0, hints: 0, solved: false, verdict: null, badAt: -1 };
+    const s = screen();
+    s.append(header(game, `Puzzle ${i + 1} of ${GC.BUILD.length}`, team));
+    const body = h('div', { class: 'gbody' });
+    s.append(body);
+    const db = new E.DB(STORE.slice, STORE.next);
+    function preview() {
+      const lines = [...good, ...B.bad.map((b) => b[0])].filter((l) => st.picked.has(l));
+      return `${B.head}\n${lines.map((l, k) => '  ' + l + (k < lines.length - 1 ? ',' : '')).join('\n')}\n${B.foot}`;
+    }
+    function render() {
+      body.innerHTML = '';
+      let leftEl, rightEl;
+      if (B.type === 'order') {
+        leftEl = h('div', { class: 'panel slots' }, h('div', { class: 'panel-h' }, 'Your query'),
+          st.placed.map((l, k) => h('div', { class: 'slot' + (k === st.badAt ? ' badline' : st.solved ? ' okline' : ''), title: 'Click to send it back', html: Q.highlight(l),
+            onclick: () => { if (st.solved) return; st.placed.splice(k, 1); st.badAt = -1; st.verdict = null; render(); } })),
+          st.solved ? null : h('div', { class: 'slot empty' }, st.placed.length ? 'Next piece…' : 'Click a piece on the right to start'));
+        rightEl = h('div', { class: 'panel pieces' }, h('div', { class: 'panel-h' }, 'Pieces'),
+          pieces.filter((p) => !st.placed.includes(p)).map((p) => h('button', { class: 'piece', disabled: st.solved, html: Q.highlight(p),
+            onclick: () => { st.placed.push(p); st.badAt = -1; st.verdict = null; render(); } })));
+      } else {
+        leftEl = h('div', { class: 'panel slots' }, h('div', { class: 'panel-h' }, 'Your CREATE TABLE'), h('pre', { class: 'code', style: { boxShadow: 'none', fontSize: '17px' }, html: Q.highlight(preview()) }));
+        rightEl = h('div', { class: 'panel pieces' }, h('div', { class: 'panel-h' }, 'Switch on the lines it needs'),
+          pieces.map((p) => h('button', { class: 'piece', 'aria-pressed': String(st.picked.has(p)), disabled: st.solved, html: Q.highlight(p),
+            onclick: () => { if (st.picked.has(p)) st.picked.delete(p); else st.picked.add(p); st.verdict = null; render(); } })));
+      }
+      const v = st.verdict;
+      const last = i + 1 >= GC.BUILD.length;
+      const foot = h('div', { class: 'bld-foot' },
+        st.solved ? h('button', { class: 'btn big primary', onclick: next }, last ? 'See results' : 'Next puzzle') : h('button', { class: 'btn big primary', onclick: check }, 'Check'),
+        st.solved ? null : h('button', { class: 'btn big ghost', onclick: hint }, 'Hint (−50)'),
+        st.solved || B.type !== 'order' ? null : h('button', { class: 'btn big ghost', onclick: () => { st.placed = []; st.badAt = -1; st.verdict = null; render(); } }, 'Clear'),
+        h('div', { class: 'verdictbox' }, v ? h('div', { class: 'outcome ' + (v.ok ? 'ok' : 'err'), html: v.html }) : null));
+      const extra = [];
+      if (st.solved && B.q) {
+        const r = Q.evaluate(B.q, db);
+        extra.push(h('div', { class: 'panel bld-res scroll', style: { padding: '8px 10px' } }, h('div', { class: 'jp-count' }, `Postgres returns ${r.rows.length} rows`),
+          h('table', { class: 'rtable' }, h('thead', null, h('tr', null, r.cols.map((c) => h('th', null, c)))),
+            h('tbody', null, r.rows.map((row) => h('tr', null, row.map((x) => h('td', { class: x === null ? 'null' : null }, x === null ? 'NULL' : String(x)))))))));
+      }
+      body.append(h('div', { class: 'bld' }, h('div', { class: 'goal' }, '🎯 ' + B.goal), h('div', { class: 'bld-grid' }, leftEl, rightEl), ...extra, foot));
+    }
+    function check() {
+      let msg = null;
+      if (B.type === 'order') {
+        const j = st.placed.findIndex((l, k) => l !== B.lines[k]);
+        if (j === -1 && st.placed.length === B.lines.length) msg = null;
+        else if (j === -1) { st.verdict = { ok: false, html: `So far so good. ${B.lines.length - st.placed.length} more ${B.lines.length - st.placed.length === 1 ? 'piece' : 'pieces'} to go.` }; render(); return; }
+        else { st.badAt = j; msg = badMap[st.placed[j]] || `Piece ${j + 1} is in the wrong place. SQL reads SELECT, FROM, JOIN ... ON, WHERE, GROUP BY, ORDER BY.`; }
+      } else {
+        const badPick = [...st.picked].find((l) => badMap[l]);
+        const missing = good.find((l) => !st.picked.has(l));
+        if (badPick) msg = badMap[badPick];
+        else if (missing) msg = (B.missing && B.missing[missing]) || 'Something is still missing.';
+      }
+      if (msg) { st.attempts += 1; st.verdict = { ok: false, html: '✗ ' + esc(msg) }; render(); return; }
+      st.solved = true;
+      const pts = Math.max(50, [300, 200, 100][Math.min(st.attempts, 2)] - st.hints * 50);
+      award(team, pts);
+      S.log.push({ i, pts, team });
+      st.verdict = { ok: true, html: `✓ That's valid PostgreSQL and it does the job. <b>+${pts}</b>` };
+      render();
+    }
+    function hint() {
+      st.hints += 1;
+      if (B.type === 'order') {
+        const j = st.placed.findIndex((l, k) => l !== B.lines[k]);
+        if (j !== -1) st.placed = st.placed.slice(0, j);
+        else if (st.placed.length < B.lines.length) st.placed.push(B.lines[st.placed.length]);
+        st.verdict = { ok: false, html: '💡 Placed the next right piece for you.' };
+      } else {
+        const badPick = [...st.picked].find((l) => badMap[l]);
+        if (badPick) { st.picked.delete(badPick); st.verdict = { ok: false, html: '💡 Switched off a line that doesn\'t belong.' }; }
+        else { const m = good.find((l) => !st.picked.has(l)); if (m) st.picked.add(m); st.verdict = { ok: false, html: '💡 Switched on a line it needs.' }; }
+      }
+      st.badAt = -1;
+      render();
+    }
+    function next() { if (i + 1 < GC.BUILD.length) buildPuzzle(i + 1, S); else buildEnd(S); }
+    G.keys.Enter = () => (st.solved ? next() : check());
+    render();
+  }
+  function buildEnd(S) {
+    const items = S.log.map((l) => h('div', { class: 'it ok', html: `<b>Puzzle ${l.i + 1}${l.team !== null ? ` (${esc(G.teams[l.team].name)})` : ''}: +${l.pts}.</b> ${esc(GC.BUILD[l.i].goal)}` }));
+    finish(GAMES[4], S.start, [h('div', { class: 'review scroll' }, items)], () => buildPuzzle(0, { start: snapshot(), log: [] }));
+  }
+
+  /* ------------------------------------------------------------ init */
+  function help() {
+    sheet('Keyboard', h('div', { class: 'help' }, h('dl', null,
+      [[['1', '2', '3', '4', '5'], 'On the home screen: open a game'], [['1', '2', '3'], 'Relationship Rush: sort the card'], [['Enter'], 'Start, reveal, check or next'],
+        [['1', '2'], 'Solo votes in the voting games'], [['Space', 'P'], 'Playground (hold Space, press P)'], [['Space', 'G'], 'Game'], [['Space', 'S'], 'Back to the story'], [['T'], 'Light or dark'], [['F'], 'Full screen'], [['?'], 'This help'], [['Esc'], 'Close']]
+        .map(([ks, d]) => [h('dt', null, ks.map((k) => h('kbd', null, k))), h('dd', null, d)]))), { width: 640 });
+  }
+  function init() {
+    UI.init();
+    $('#helpBtn').addEventListener('click', help);
+    onKey('?', help);
+    document.addEventListener('keydown', (e) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const tag = (e.target && e.target.tagName) || '';
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || $('#sheetBg')) return;
+      const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+      if (k === 't' || k === 'f' || k === '?') return;
+      const fn = G.keys[k];
+      if (fn) { e.preventDefault(); fn(e); }
+    });
+    home();
+    window.GAME = { G, GAMES, home };
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
+})();
+
+</script>
+<script>window.TABS_PAGE = 'game';</script>
+<script>
+/* The three pages (story, playground, game) each live in their own named tab.
+   Hold Space and press P, G or S to jump between them. Tabs talk over a
+   BroadcastChannel, so a page can hand another page a command (like a query
+   to load) or ask it to come to the front. */
+(function () {
+  'use strict';
+  var PAGE = window.TABS_PAGE;
+  var PAGES = {
+    story: { file: 'db-relations-story.html', name: 'dbrel-story', label: 'Story' },
+    playground: { file: 'db-relations-playground.html', name: 'dbrel-playground', label: 'Playground' },
+    game: { file: 'db-relations-game.html', name: 'dbrel-game', label: 'Game' }
+  };
+  var KEYS = { p: 'playground', g: 'game', s: 'story' };
+  var ALIVE_MS = 90000;
+  /* a fixed tab name, so window.open can find this tab again instead of opening a copy */
+  try { window.name = PAGES[PAGE].name; } catch (e) { /* ignore */ }
+
+  /* ---------- messages between tabs ---------- */
+  var me = Math.random().toString(36).slice(2);
+  var seq = 0;
+  var seen = {};
+  var handlers = [];
+  var cmdHandlers = [];
+  var pendingCmds = [];
+  var alive = {};
+  var ch = null;
+  try { ch = new BroadcastChannel('dbrel-tabs'); } catch (e) { ch = null; }
+
+  function send(msg, win) {
+    seq += 1;
+    var m = { id: me + ':' + seq, from: me, page: PAGE };
+    for (var k in msg) m[k] = msg[k];
+    if (ch) { try { ch.postMessage(m); } catch (e) { /* closed */ } }
+    if (win) { try { win.postMessage({ __dbrelTabs: m }, '*'); } catch (e) { /* closed */ } }
+  }
+  function runCmd(cmd) {
+    if (!cmdHandlers.length) { pendingCmds.push(cmd); return; }
+    cmdHandlers.forEach(function (h) { try { h(cmd); } catch (e) { console.error(e); } });
+  }
+  function receive(m) {
+    if (!m || m.from === me || seen[m.id]) return;
+    seen[m.id] = 1;
+    if (m.type === 'bye') delete alive[m.page];
+    else if (m.page) alive[m.page] = Date.now();
+    if (m.type === 'hello') send({ type: 'here' });
+    if (m.to && m.to !== PAGE) return;
+    if (m.type === 'focus') { try { window.focus(); } catch (e) { /* ignore */ } }
+    if (m.type === 'cmd' && m.cmd) runCmd(m.cmd);
+    handlers.forEach(function (h) { try { h(m); } catch (e) { console.error(e); } });
+  }
+  if (ch) ch.onmessage = function (e) { receive(e.data); };
+  window.addEventListener('message', function (e) { if (e.data && e.data.__dbrelTabs) receive(e.data.__dbrelTabs); });
+  send({ type: 'hello' });
+  setInterval(function () { send({ type: 'here' }); }, 20000);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) send({ type: 'here' }); });
+  window.addEventListener('pagehide', function () { send({ type: 'bye' }); });
+
+  /* a command can also arrive in the address, when this tab was just opened for it */
+  (function () {
+    var m = /^#cmd=(.*)$/.exec(location.hash || '');
+    if (!m) return;
+    try { pendingCmds.push(JSON.parse(decodeURIComponent(m[1]))); } catch (e) { /* bad link */ }
+    try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* file urls */ }
+  })();
+
+  /* ---------- a small note in the corner ---------- */
+  var noteTimer = null;
+  function note(text) {
+    var el = document.getElementById('tabsNote');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'tabsNote';
+      el.setAttribute('role', 'status');
+      el.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:9999;padding:10px 18px;border-radius:12px;' +
+        'font:600 17px/1.3 system-ui,sans-serif;background:rgba(20,22,30,.94);color:#fff;box-shadow:0 10px 30px -10px rgba(0,0,0,.6);pointer-events:none';
+      document.body.appendChild(el);
+    }
+    el.textContent = text;
+    el.hidden = false;
+    clearTimeout(noteTimer);
+    noteTimer = setTimeout(function () { el.hidden = true; }, 2800);
+  }
+
+  /* ---------- open a page, or bring its tab to the front ---------- */
+  function go(page, cmd) {
+    var P = PAGES[page];
+    if (!P) return;
+    if (page === PAGE) { if (cmd) runCmd(cmd); return; }
+    var w = null;
+    try { w = window.open('', P.name); } catch (e) { w = null; }
+    if (!w) { note('Allow pop-ups for this file, then try again.'); return; }
+    var fresh = false;
+    try { fresh = w.location.href === 'about:blank'; } catch (e) { fresh = false; }
+    if (!fresh) {
+      /* the tab is already there: bring it forward and hand it the command */
+      try { w.focus(); } catch (e) { /* ignore */ }
+      if (cmd) send({ type: 'cmd', to: page, cmd: cmd }, w);
+      return;
+    }
+    var url = new URL(P.file, location.href).href + (cmd ? '#cmd=' + encodeURIComponent(JSON.stringify(cmd)) : '');
+    var load = function () { try { w.location.replace(url); w.focus(); } catch (e) { /* ignore */ } };
+    var last = alive[page];
+    if (!last || Date.now() - last > ALIVE_MS) { load(); return; }
+    /* it may be open in a tab this one can't reach by name: check before making a second copy */
+    var answered = false;
+    var listen = function (m) { if (m.type === 'here' && m.page === page) answered = true; };
+    handlers.push(listen);
+    send({ type: 'hello' });
+    setTimeout(function () {
+      handlers.splice(handlers.indexOf(listen), 1);
+      if (!answered) { load(); return; }
+      try { w.close(); } catch (e) { /* ignore */ }
+      send({ type: 'focus', to: page });
+      if (cmd) send({ type: 'cmd', to: page, cmd: cmd });
+      note(P.label + ' is already open in another tab.');
+    }, 160);
+  }
+
+  /* ---------- Space + P / G / S ---------- */
+  var TEXT_INPUT = /^(text|search|email|url|tel|password|number|date|datetime-local|month|time|week)$/i;
+  function typing(t) {
+    if (!t || !t.closest) return false;
+    if (t.closest('textarea, select, [contenteditable=""], [contenteditable="true"]')) return true;
+    return t.tagName === 'INPUT' && TEXT_INPUT.test(t.type || 'text');
+  }
+  var shortcut = function (page) { go(page); };
+  var held = false;
+  var used = false;
+  var heldTarget = null;
+  var heldShift = false;
+  var replaying = false;
+  window.addEventListener('keydown', function (e) {
+    if (replaying || e.ctrlKey || e.metaKey || e.altKey || typing(e.target)) return;
+    if (e.key === ' ' || e.code === 'Space') {
+      /* Space waits for its key-up: alone it does its usual job, with P, G or S it switches tabs */
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      if (e.repeat || held) return;
+      held = true; used = false; heldTarget = e.target; heldShift = e.shiftKey;
+      return;
+    }
+    if (!held) return;
+    var page = KEYS[(e.key || '').toLowerCase()];
+    if (!page) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    used = true;
+    if (page === PAGE) { note("You're on the " + PAGES[page].label + '.'); return; }
+    shortcut(page);
+  }, true);
+  window.addEventListener('keyup', function (e) {
+    if (e.key !== ' ' && e.code !== 'Space') return;
+    if (!held) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    held = false;
+    if (!used) replay(heldTarget, heldShift);
+  }, true);
+  window.addEventListener('blur', function () { held = false; });
+  /* hand the plain Space press back to the page, exactly as it would have arrived */
+  function replay(t, shift) {
+    var target = t && t.isConnected ? t : document.body;
+    var ev = new KeyboardEvent('keydown', { key: ' ', code: 'Space', shiftKey: shift, bubbles: true, cancelable: true });
+    var open;
+    replaying = true;
+    try { open = target.dispatchEvent(ev); } finally { replaying = false; }
+    if (open && target.matches && target.matches('button, [role="button"], summary, input[type="checkbox"], input[type="radio"]') && !target.disabled) target.click();
+  }
+
+  /* links between the pages (the tabs in the header) */
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[data-page]');
+    if (!a || e.ctrlKey || e.metaKey || e.shiftKey || e.button) return;
+    e.preventDefault();
+    if (a.dataset.page !== PAGE) shortcut(a.dataset.page);
+  });
+
+  window.Tabs = {
+    page: PAGE,
+    go: go,
+    send: send,
+    note: note,
+    on: function (h) { handlers.push(h); },
+    onCommand: function (h) {
+      cmdHandlers.push(h);
+      var list = pendingCmds.splice(0);
+      if (list.length) setTimeout(function () { list.forEach(runCmd); }, 0);
+    },
+    setShortcut: function (fn) { shortcut = fn; }
+  };
+})();
+
+</script>
+<script>
+(function () {
+  function start() {
+    Tabs.on(function (m) { if (m.type === 'theme' && m.t && m.t !== document.documentElement.dataset.theme) UI.setTheme(m.t); });
+    Tabs.onCommand(function (c) {
+      if (c.type !== 'open') return;
+      if (typeof c.teams === 'boolean') GAME.G.mode = c.teams ? 'teams' : 'solo';
+      GAME.G.rushTimer = !!c.timer;
+      var g = GAME.GAMES.filter(function (x) { return x.id === c.game; })[0];
+      if (g) g.run(); else GAME.home();
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
+  else start();
+})();
+</script>
+</body>
+</html>
